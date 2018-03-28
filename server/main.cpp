@@ -98,10 +98,13 @@ int main(void)
                             perror("recv");
                             close(new_fd);
                             exit(1);
+                        } else if (numbytes > 0) {
+                            printf("SOMETHING IS HAPPENING\n", recvbuf);
+                        } else if ( numbytes == 0 ) {
+                            break;
                         }
-                        printf("Received from %s: %s\n", inet_ntoa(their_addr.sin_addr), recvbuf);
-                        break;
                     }
+                    printf("Received from %s: %s\n", inet_ntoa(their_addr.sin_addr), recvbuf);
                 }
 
                 if (numbytes < 0) {
