@@ -12,18 +12,28 @@
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
+#include <string>
+#include <iostream>
 
 #define PORT 3490 // the port client will be connecting to 
 
-#define MAXDATASIZE 100 // max number of bytes we can get at once 
+#define MAXDATASIZE 100 // max number of bytes we can get at once
+#define MAXCONTROLSIZE 1
+
+static const std::string C_1 = "A";
+static const std::string C_2 = "B";
 
 int main(int argc, char *argv[])
 {
     int sockfd, numbytes;
     char buf[MAXDATASIZE];
     char sendbuf[MAXDATASIZE];
+    char controlbuf[MAXCONTROLSIZE];
     struct hostent *he;
-    struct sockaddr_in their_addr; // connector's address information 
+    struct sockaddr_in their_addr; // connector's address information
+//    S TEST1, TEST2;
+//    TEST1.s = 'A';
+//    TEST2.s = 'B';
 
     if (argc != 2) {
         fprintf(stderr,"usage: client hostname\n");
@@ -53,22 +63,24 @@ int main(int argc, char *argv[])
     printf("connection has been established with server. Type any message for server\n");
 
     for(;;) {
-        gets(sendbuf);
-        numbytes=sizeof(sendbuf);
-        sendbuf[numbytes]='\0';
-        if (numbytes == 0 || strncmp(sendbuf,"bye",3)==0) {
-            printf("Bye\n");
+        int choice;
+        const char* control;
+        std::cout << "1. JILL" << std::endl << "2. aaaaAAAAAAAHHHHHHHHH" << std::endl << "3. Exit" << std::endl << "> ";
+        std::cin >> choice;
+        if (choice == 1) {
+            control = C_1.c_str();
+        } else if ( choice == 2 ) {
+            control = C_2.c_str();
+        } else if ( choice == 3 ) {
             break;
         }
-        else {
-            if ((numbytes=send(sockfd, sendbuf, sizeof(sendbuf), 0)) == -1) {
-                perror("send");
-                close(sockfd);
-                exit(1);
-            }
+        if ((numbytes=send(sockfd, control, sizeof(control), 0)) == -1) {
+//            perror("send");
+//            close(sockfd);
+//            exit(1);
 
             sendbuf[numbytes]='\0';
-            printf("Sent: %s\n",sendbuf);
+            printf("Sent: %s\n",controlbuf);
 
             if ((numbytes=recv(sockfd, buf, 127, 0)) == -1) {
                 perror("recv");

@@ -80,25 +80,34 @@ int main(void)
             close(sockfd); // child doesn't need the listener
 	    recvbuf=(char *) calloc(128,sizeof(char));
             for(;;) {
-	    	numbytes=recv(new_fd,recvbuf,128,0);
-		if (numbytes < 0) {
-			perror("recv");
-			close(new_fd);
-	    		exit(1);
-	    	}
+	    	    numbytes=recv(new_fd,recvbuf,1,0);
+
+                //..... Do stuff
+                if ( recvbuf[0] == 'A' ){
+                    printf("THE PROPHECY IS TRUE\n");
+                }
+                else if ( recvbuf[0] == 'B' ){
+                    printf("It is Wednesday, my dudes. aaaaaAAAAAAHHHHHHHHHH\n");
+                }
+
+                if (numbytes < 0) {
+                    perror("recv");
+                    close(new_fd);
+                        exit(1);
+                }
                 else if (numbytes==0 || strncmp(recvbuf,"bye",3)==0) {
-			printf("Clinet(%s) has been disconnected\n",
-                        (char *) inet_ntoa(their_addr.sin_addr));
-			close(new_fd);
-			exit(0);
-	        }	
-            	printf("Received from %s: %s\n",inet_ntoa(their_addr.sin_addr),recvbuf); 
-            	if (send(new_fd, recvbuf, numbytes, 0) == -1) {
-                	perror("send");
-			close(new_fd);
-	    		exit(1);
-            	}
-	    }
+                    printf("Clinet(%s) has been disconnected\n", (char *) inet_ntoa(their_addr.sin_addr));
+                    close(new_fd);
+                    exit(0);
+                }
+//                printf("Received from %s: %s\n",inet_ntoa(their_addr.sin_addr),recvbuf);
+
+//                if (send(new_fd, recvbuf, numbytes, 0) == -1) {
+//                    perror("send");
+//                    close(new_fd);
+//                    exit(1);
+//                }
+	        }
             close(new_fd);
             exit(0);
         }
