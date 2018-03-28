@@ -73,9 +73,11 @@ int main(int argc, char *argv[])
         std::cin >> choice;
         if (choice == 1) {
             control = C_1.c_str();
-        } else if ( choice == 2 ) {
+        }
+        else if ( choice == 2 ) {
             control = C_2.c_str();
-        } else if (choice == 3) {
+        }
+        else if (choice == 3) {
             control = C_3.c_str();
             if ((numbytes=send(sockfd, control, sizeof(control), 0)) == -1) {
                 perror("send");

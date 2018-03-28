@@ -91,15 +91,14 @@ int main(void)
                     printf("Received from %s: %s\n",inet_ntoa(their_addr.sin_addr), " It is Wednesday, my dudes. aaaaaAAAAAAHHHHHHHHHH\n");
                 }
                 else if ( recvbuf[0] == 'C') {
-                    for(;;) {
-                        numbytes = recv(new_fd, recvbuf, 128, 0);
-                        if (numbytes < 0) {
-                            perror("recv");
-                            close(new_fd);
-                            exit(1);
-                        }
-                        printf("Received from %s: %s\n", inet_ntoa(their_addr.sin_addr), recvbuf);
+                    printf("LISTENING FOR MESSAGE\n");
+                    numbytes = recv(new_fd, recvbuf, 128, 0);
+                    if (numbytes < 0) {
+                        perror("recv");
+                        close(new_fd);
+                        exit(1);
                     }
+                    printf("Received from %s: %s\n", inet_ntoa(their_addr.sin_addr), recvbuf);
                 }
 
                 if (numbytes < 0) {
@@ -112,13 +111,6 @@ int main(void)
                     close(new_fd);
                     exit(0);
                 }
-//                printf("Received from %s: %s\n",inet_ntoa(their_addr.sin_addr),recvbuf);
-
-//                if (send(new_fd, recvbuf, numbytes, 0) == -1) {
-//                    perror("send");
-//                    close(new_fd);
-//                    exit(1);
-//                }
 	        }
             close(new_fd);
             exit(0);
