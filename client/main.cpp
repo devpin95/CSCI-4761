@@ -14,6 +14,8 @@
 #include <sys/socket.h>
 #include <string>
 #include <iostream>
+#include <climits>
+#include <limits>
 
 #define PORT 3490 // the port client will be connecting to 
 
@@ -22,12 +24,13 @@
 
 static const std::string C_1 = "A";
 static const std::string C_2 = "B";
+static const std::string C_3 = "C";
 
 int main(int argc, char *argv[])
 {
     int sockfd, numbytes;
     char buf[MAXDATASIZE];
-    char sendbuf[MAXDATASIZE];
+    char stringbuf[MAXDATASIZE];
     char controlbuf[MAXCONTROLSIZE];
     struct hostent *he;
     struct sockaddr_in their_addr; // connector's address information
@@ -65,31 +68,45 @@ int main(int argc, char *argv[])
     for(;;) {
         int choice;
         const char* control;
-        std::cout << "1. JILL" << std::endl << "2. aaaaAAAAAAAHHHHHHHHH" << std::endl << "3. Exit" << std::endl << "> ";
+        std::cout << "1. JILL" << std::endl << "2. aaaaAAAAAAAHHHHHHHHH" << std::endl << "3. Message" << std::endl
+                  << "4. Exit" << "> ";
         std::cin >> choice;
         if (choice == 1) {
             control = C_1.c_str();
         } else if ( choice == 2 ) {
             control = C_2.c_str();
-        } else if ( choice == 3 ) {
+        } else if (choice == 3) {
+            control = C_3.c_str();
+            if ((numbytes=send(sockfd, control, sizeof(control), 0)) == -1) {
+                perror("send");
+                close(sockfd);
+                exit(1);
+            }
+            std::cout << "Message: ";
+            std::cin.ignore(std::numeric_limits<std::streamsize>::max(),'\n');
+            gets(stringbuf);
+            numbytes=sizeof(stringbuf);
+            stringbuf[numbytes]='\0';
+            control = stringbuf;
+        } else if ( choice == 4 ) {
             break;
         }
         if ((numbytes=send(sockfd, control, sizeof(control), 0)) == -1) {
-//            perror("send");
-//            close(sockfd);
-//            exit(1);
+            perror("send");
+            close(sockfd);
+            exit(1);
 
-            sendbuf[numbytes]='\0';
-            printf("Sent: %s\n",controlbuf);
+//            stringbuf[numbytes]='\0';
+//            printf("Sent: %s\n",controlbuf);
 
-            if ((numbytes=recv(sockfd, buf, 127, 0)) == -1) {
-                perror("recv");
-                exit(1);
-            }
-
-            buf[numbytes] = '\0';
-
-            printf("Received: %s\n",buf);
+//            if ((numbytes=recv(sockfd, buf, 127, 0)) == -1) {
+//                perror("recv");
+//                exit(1);
+//            }
+//
+//            buf[numbytes] = '\0';
+//
+//            printf("Received: %s\n",buf);
         }
     }
     close(sockfd);
