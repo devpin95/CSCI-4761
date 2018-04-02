@@ -20,9 +20,11 @@ int main(int argc, char *argv[])
             break;
         case 4: std::cout << clientmsg << " "; perror("listen");
             break;
-        case 5: break;
+        case 5: std::cout << clientmsg << " "; perror("send");
+            break;
         default: break;
     }
+    clientapp.stop();
     return 0;
 }
 

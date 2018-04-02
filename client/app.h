@@ -14,6 +14,7 @@
 #include <iostream>
 #include <climits>
 #include <limits>
+#include "APP_PROTOCOL.h"
 
 #define PORT 3490 // the port client will be connecting to
 #define MAXDATASIZE 100 // max number of bytes we can get at once
@@ -30,15 +31,13 @@ public:
         SOCKET = 2,
         CONNECT = 3,
         LISTEN = 4,
-        SIGACTION = 5,
+        SEND = 5,
         RECV = 6
     };
 
-    //CONTROL VALUES
-    struct CONTROL {
-        char LOGIN = ""
-    };
 private:
+    int login();
+    int add_user();
     int sockfd;
 };
 

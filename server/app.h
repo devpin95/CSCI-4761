@@ -13,6 +13,7 @@
 #include <sys/wait.h>
 #include <signal.h>
 #include <string>
+#include "APP_PROTOCOL.h"
 
 #define MYPORT 3490    // the port users will be connecting to
 #define BACKLOG 10     // how many pending connections queue will hold
@@ -31,11 +32,14 @@ public:
         BIND = 3,
         LISTEN = 4,
         SIGACTION = 5,
-        RECV = 6
+        RECV = 6,
+        SEND = 7
     };
 
 private:
     int sockfd, new_fd;
+    struct sockaddr_in their_addr; // connector's address information
+    int add_user();
 };
 
 
