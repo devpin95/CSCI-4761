@@ -21,7 +21,6 @@ int app::start(std::string &msg, int argc, char *argv[]) {
     //DESKTOP-IHAFUS8
     if ((he=gethostbyname(argv[1])) == NULL) {  // get the host info
         return APP_RESPONSE::GETHOSTBYNAME;
-
     }
 
     if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
@@ -80,17 +79,20 @@ int app::login() {
 
 int app::add_user() {
     const char* control;
+    char servresp[1] = {0};
     char unamebuf[MAX_USERNAME_LENGTH] = {'\0', };
     char passbuf[MAX_PASSWORD_LENGTH] = {'\0', };
     control = C_LOGIN.c_str();
 
     //send control byte
     if ((send(sockfd, control, /* sizeof(char) * strlen(control) */ MAXCONTROLSIZE, 0)) == -1) {
+        int e = errno;
+        std::cout << "errno -> " << e;
         return APP_RESPONSE::SEND;
     }
 
 
-    //std::cin.ignore(std::numeric_limits<std::streamsize>::max(),'\n');
+    std::cin.ignore(std::numeric_limits<std::streamsize>::max(),'\n');
 
     while(true) {
         bzero(unamebuf, sizeof(unamebuf));
@@ -121,11 +123,38 @@ int app::add_user() {
         }
     }
 
-    if ((send(sockfd, unamebuf, sizeof(char)*strlen(unamebuf), 0)) == -1) {
+    if ((send(sockfd, unamebuf, MAX_USERNAME_LENGTH, 0)) == -1) {
+        int e = errno;
+        std::cout << "errno -> " << e;
         return APP_RESPONSE::SEND;
     }
 
-    if ((send(sockfd, passbuf, sizeof(char)*strlen(passbuf), 0)) == -1) {
+    if ((send(sockfd, passbuf, MAX_USERNAME_LENGTH, 0)) == -1) {
+        int e = errno;
+        std::cout << "errno -> " << e;
         return APP_RESPONSE::SEND;
+    }
+
+    int numbytes = recv( sockfd, servresp, MAXCONTROLSIZE, 0 );
+    int onrre = errno;
+
+    if (numbytes == -1) {
+        perror("recv");
+        int e = errno;
+        std::cout << "(1) errno -> " << e << std::endl;
+        return APP_RESPONSE::RECV;
+    }
+    else if ( numbytes==0 ) {
+        int e = errno;
+        std::cout << "(2) errno -> " << e;
+        return APP_RESPONSE::OK;
+    }
+
+    int resp = atoi( servresp );
+    if ( resp == 1 ) {
+        std::cout << "Account created" << std::endl;
+    }
+    else {
+        std::cout << "Something went wrong" << std::endl;
     }
 }

@@ -16,6 +16,7 @@ int main(void) {
         case 4: std::cout << servermsg << " "; perror("listen");
             break;
         case 5: break;
+        case 6 : std::cout << servermsg << " "; perror("recv");
         default: break;
     }
     sapp.stop();

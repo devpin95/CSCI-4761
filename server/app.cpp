@@ -32,6 +32,8 @@ int app::start( std::string &msg ) {
     }
 
     if (listen(sockfd, BACKLOG) == -1) {
+        int e = errno;
+        std::cout << "errno -> " << e;
         return APP_RESPONSE::LISTEN;
     }
 
@@ -51,24 +53,22 @@ int app::start( std::string &msg ) {
         printf("server: got connection from %s\n",(char *) inet_ntoa(their_addr.sin_addr));
         msg = inet_ntoa(their_addr.sin_addr);
 
-        if (!fork()) { // this is the child process
-          close(sockfd); // child doesn't need the listener
+//        if (!fork()) { // this is the child process
+            close(sockfd); // child doesn't need the listener
             recvbuf=(char *) calloc(128,sizeof(char));
 
             for(;;) {
                 bzero(recvbuf, sizeof(recvbuf));
                 numbytes=recv(new_fd, recvbuf, MAXCONTROLSIZE, 0);
 
-                if (numbytes < 0) {
+                if (numbytes == -1) {
+                    int e = errno;
+                    std::cout << "errno -> " << e;
+                    fprintf(stderr, "(1) numbytes = %d\n", numbytes);
                     return APP_RESPONSE::RECV;
                 }
                 else if ( numbytes==0 ) {
                     return APP_RESPONSE::OK;
-                    //stop();
-                    //printf("Clinet(%s) has been disconnected\n", (char *) inet_ntoa(their_addr.sin_addr));
-                    //close(new_fd);
-                    //exit(0);
-                    //return;
                 }
 
                 printf("numbytes: %d\n", numbytes);
@@ -76,6 +76,7 @@ int app::start( std::string &msg ) {
                 //..... Do stuff
                 if ( atoi( &recvbuf[0] ) == C_LOGIN_BIN )
                 {
+                    fprintf(stderr, "Calling add_user()\n" );
                     int resp = add_user();
                     if ( resp != -1 ) {
                         return resp;
@@ -93,8 +94,10 @@ int app::start( std::string &msg ) {
                     printf("LISTENING FOR MESSAGE\n");
                     numbytes = recv(new_fd, recvbuf, 127, 0);
                     if (numbytes < 0) {
-                        perror("recv");
-                        stop();
+                        int e = errno;
+                        std::cout << "errno -> " << e;
+//                        perror("recv");
+//                        stop();
                     }
                     printf("Received from %s: %s\n", inet_ntoa(their_addr.sin_addr), recvbuf);
                 }
@@ -102,7 +105,7 @@ int app::start( std::string &msg ) {
             free(recvbuf);
             close(new_fd);
             exit(0);
-        }
+//        }
         close(new_fd);  // parent doesn't need this
     }
 }
@@ -121,31 +124,51 @@ int app::add_user() {
     const int UNAME_USED = 0b0010;
     const int MAL_DATA = 0b0011;
 
-    char unamebuf[MAX_USERNAME_LENGTH] = { '\0', };
-    int numbytes = recv( new_fd, unamebuf, sizeof(char) * MAX_USERNAME_LENGTH, 0 );
-
+    char unamebuf[MAX_USERNAME_LENGTH] = { 0, };
+    int numbytes = recv( new_fd, unamebuf, MAX_USERNAME_LENGTH, 0 );
+    fprintf(stderr, "(2) numbytes = %d\n", numbytes);
     if ( numbytes == -1 ) return APP_RESPONSE::RECV;
     else if ( numbytes == 0 ) return APP_RESPONSE::OK;
 
-    printf("Received USERNAME from %s: %s\n ",inet_ntoa(their_addr.sin_addr), unamebuf );
+    printf("Received USERNAME from %s: %s\n",inet_ntoa(their_addr.sin_addr), unamebuf );
 
     char passbuf[MAX_USERNAME_LENGTH] = { '\0', };
-    numbytes = recv( new_fd, passbuf, sizeof(char) * MAX_USERNAME_LENGTH, 0 );
+    numbytes = recv( new_fd, passbuf, MAX_USERNAME_LENGTH, 0 );
 
-    if ( numbytes == -1 ) return APP_RESPONSE::RECV;
-    else if ( numbytes == 0 ) return APP_RESPONSE::OK;
+    if ( numbytes == -1 ) {
+        int e = errno;
+        std::cout << "errno -> " << e;
+        return APP_RESPONSE::RECV;
+    }
+    else if ( numbytes == 0 ) {
+        int e = errno;
+        std::cout << "errno -> " << e;
+        return APP_RESPONSE::OK;
+    }
 
-    printf( "Received PASSWORD from %s: %s\n ",inet_ntoa( their_addr.sin_addr ), passbuf );
+    printf( "Received PASSWORD from %s: %s\n",inet_ntoa( their_addr.sin_addr ), passbuf );
+    std::cout << "SENDING LOGIN RESPONSE... ";
 
     const char* control;
-    if ( ERRCHECKER::USERNAME( unamebuf ) && ERRCHECKER::PASSWORD( passbuf ) ) {
+    if ( ERRCHECKER::USERNAME( unamebuf ) && ERRCHECKER::PASSWORD( passbuf ) )
+    {
         control = std::to_string( OK ).c_str( );
-        if ( ( send( new_fd, control, MAXCONTROLSIZE, 0 ) ) == -1 ) {
+        std::cout << control << std::endl;
+        if ( ( send( new_fd, control, MAXCONTROLSIZE, 0 ) ) == -1 )
+        {
+            int e = errno;
+            std::cout << "(-1) errno -> " << e;
             return APP_RESPONSE::SEND;
         }
-    } else {
+    }
+    else
+    {
         control = std::to_string( MAL_DATA ).c_str( );
-        if ( ( send( new_fd, control, MAXCONTROLSIZE, 0 ) ) == -1 ) {
+        std::cout << control << std::endl;
+        if ( ( send( new_fd, control, MAXCONTROLSIZE, 0 ) ) == -1 )
+        {
+            int e = errno;
+            std::cout << "(-2) errno -> " << e;
             return APP_RESPONSE::SEND;
         }
     }

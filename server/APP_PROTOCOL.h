@@ -1,5 +1,5 @@
-#ifndef CLIENT_CONTROL_PROTOCOL_CONSTS_H
-#define CLIENT_CONTROL_PROTOCOL_CONSTS_H
+#ifndef SERVER_APP_PROTOCOL_H
+#define SERVER_APP_PROTOCOL_H
 
 #include <string>
 
@@ -28,7 +28,7 @@ struct ERRCHECKER {
 
         // check if
         for ( auto c : uname ) {
-            if ( isalnum( c ) == 0 || c == '-' ) {
+            if ( isalnum( c ) == 0 || c == '-') {
                 return false;
             }
         }
@@ -41,4 +41,4 @@ struct ERRCHECKER {
     }
 };
 
-#endif //CLIENT_CONTROL_PROTOCOL_CONSTS_H
+#endif //SERVER_APP_PROTOCOL_H

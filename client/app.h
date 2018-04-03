@@ -14,6 +14,7 @@
 #include <iostream>
 #include <climits>
 #include <limits>
+#include <errno.h>
 #include "APP_PROTOCOL.h"
 
 #define PORT 3490 // the port client will be connecting to

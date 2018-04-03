@@ -13,6 +13,8 @@
 #include <sys/wait.h>
 #include <signal.h>
 #include <string>
+#include <errno.h>
+#include <iostream>
 #include "APP_PROTOCOL.h"
 
 #define MYPORT 3490    // the port users will be connecting to
