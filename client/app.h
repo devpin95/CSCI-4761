@@ -17,7 +17,7 @@
 #include <errno.h>
 #include "APP_PROTOCOL.h"
 
-#define PORT 3490 // the port client will be connecting to
+#define PORT 32768 // the port client will be connecting to
 #define MAXDATASIZE 100 // max number of bytes we can get at once
 #define MAXCONTROLSIZE 1
 
@@ -27,7 +27,7 @@ public:
     void stop();
 
     enum APP_RESPONSE {
-        OK = 0,
+        DISCONN = 0,
         GETHOSTBYNAME = 1,
         SOCKET = 2,
         CONNECT = 3,

@@ -53,9 +53,9 @@ int app::start( std::string &msg ) {
         printf("server: got connection from %s\n",(char *) inet_ntoa(their_addr.sin_addr));
         msg = inet_ntoa(their_addr.sin_addr);
 
-//        if (!fork()) { // this is the child process
+        if (!fork()) { // this is the child process
             close(sockfd); // child doesn't need the listener
-            recvbuf=(char *) calloc(128,sizeof(char));
+            recvbuf = (char *) calloc(128,sizeof(char));
 
             for(;;) {
                 bzero(recvbuf, sizeof(recvbuf));
@@ -68,7 +68,7 @@ int app::start( std::string &msg ) {
                     return APP_RESPONSE::RECV;
                 }
                 else if ( numbytes==0 ) {
-                    return APP_RESPONSE::OK;
+                    break;
                 }
 
                 printf("numbytes: %d\n", numbytes);
@@ -76,8 +76,8 @@ int app::start( std::string &msg ) {
                 //..... Do stuff
                 if ( atoi( &recvbuf[0] ) == C_LOGIN_BIN )
                 {
-                    fprintf(stderr, "Calling add_user()\n" );
-                    int resp = add_user();
+                    fprintf(stderr, "Calling addUser()\n" );
+                    int resp = addUser();
                     if ( resp != -1 ) {
                         return resp;
                     }
@@ -96,16 +96,14 @@ int app::start( std::string &msg ) {
                     if (numbytes < 0) {
                         int e = errno;
                         std::cout << "errno -> " << e;
-//                        perror("recv");
-//                        stop();
                     }
                     printf("Received from %s: %s\n", inet_ntoa(their_addr.sin_addr), recvbuf);
                 }
             }
+
             free(recvbuf);
-            close(new_fd);
-            exit(0);
-//        }
+            return APP_RESPONSE::OK;
+        }
         close(new_fd);  // parent doesn't need this
     }
 }
@@ -114,15 +112,17 @@ void app::stop() {
     close(new_fd);
 }
 
-int app::add_user() {
+int app::addUser() {
     // response values
     // 0000 0001 (1) – OK
-    // 0000 0010 (2) – Username already used
-    // 0000 0011 (3) – Malformed Data
+    // 0000 0010 (2) - ERR
+    // 0000 0010 (3) – Username already used
+    // 0000 0011 (4) – Malformed Data
 
     const int OK = 0b0001;
-    const int UNAME_USED = 0b0010;
-    const int MAL_DATA = 0b0011;
+    const int ERR = 0b0010;
+    const int UNAME_USED = 0b0011;
+    const int MAL_DATA = 0b0100;
 
     char unamebuf[MAX_USERNAME_LENGTH] = { 0, };
     int numbytes = recv( new_fd, unamebuf, MAX_USERNAME_LENGTH, 0 );
@@ -150,28 +150,50 @@ int app::add_user() {
     std::cout << "SENDING LOGIN RESPONSE... ";
 
     const char* control;
-    if ( ERRCHECKER::USERNAME( unamebuf ) && ERRCHECKER::PASSWORD( passbuf ) )
+
+    // only check if the username exists if the name is valid
+    control = std::to_string( OK ).c_str( );
+    if ( ERRCHECKER::USERNAME( unamebuf ) )
     {
-        control = std::to_string( OK ).c_str( );
-        std::cout << control << std::endl;
-        if ( ( send( new_fd, control, MAXCONTROLSIZE, 0 ) ) == -1 )
+        if ( db.checkIfUserExists(unamebuf) == 1 )
         {
-            int e = errno;
-            std::cout << "(-1) errno -> " << e;
-            return APP_RESPONSE::SEND;
+            if ( ERRCHECKER::PASSWORD( passbuf ) )
+            {
+                // All good data, now it depends on if the database works
+                control = std::to_string( OK ).c_str( );
+                if ( db.addUser(unamebuf, passbuf) == -1 ) {
+                    control = std::to_string( ERR ).c_str( );
+                }
+            }
+            else
+            {
+                // Bad data
+                control = std::to_string( MAL_DATA ).c_str( );
+            }
+        }
+        else
+        {
+            // Username already used
+            control = std::to_string( UNAME_USED ).c_str( );
         }
     }
     else
     {
+        // Bad data
         control = std::to_string( MAL_DATA ).c_str( );
-        std::cout << control << std::endl;
-        if ( ( send( new_fd, control, MAXCONTROLSIZE, 0 ) ) == -1 )
-        {
-            int e = errno;
-            std::cout << "(-2) errno -> " << e;
-            return APP_RESPONSE::SEND;
-        }
+    }
+
+    std::cout << control << std::endl;
+    if ( ( send( new_fd, control, MAXCONTROLSIZE, 0 ) ) == -1 )
+    {
+        int e = errno;
+        std::cout << "(-1) errno -> " << e;
+        return APP_RESPONSE::SEND;
     }
 
     return -1;
+}
+
+int app::checkIfUserExists(const std::string &uname) {
+
 }

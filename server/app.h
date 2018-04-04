@@ -15,9 +15,10 @@
 #include <string>
 #include <errno.h>
 #include <iostream>
+#include "Database.h"
 #include "APP_PROTOCOL.h"
 
-#define MYPORT 3490    // the port users will be connecting to
+#define MYPORT 32768    // the port users will be connecting to
 #define BACKLOG 10     // how many pending connections queue will hold
 
 class app {
@@ -40,8 +41,10 @@ public:
 
 private:
     int sockfd, new_fd;
+    Database db;
     struct sockaddr_in their_addr; // connector's address information
-    int add_user();
+    int addUser();
+    int checkIfUserExists(const std::string& uname);
 };
 
 

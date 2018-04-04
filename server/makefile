@@ -14,7 +14,7 @@ CC = g++
 CXXFLAGS = -g -std=c++11
 
 ######Change to match all .cpp files.  Do not include .h files####
-OBJS = main.o app.o
+OBJS = main.o app.o Database.o
 
 ######Change from matrix to hw1.#######
 TARGET = hw1

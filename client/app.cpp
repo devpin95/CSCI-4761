@@ -57,7 +57,7 @@ int app::start(std::string &msg, int argc, char *argv[]) {
             }
         }
         else if ( choice == 3 ) {
-            return APP_RESPONSE::OK;
+            return APP_RESPONSE::DISCONN;
         }
 
 //        if ((numbytes=send(sockfd, control, sizeof(char) * strlen(control), 0)) == -1) {
@@ -78,6 +78,16 @@ int app::login() {
 }
 
 int app::add_user() {
+    // response values
+    // 0000 0001 (1) – DISCONN
+    // 0000 0010 (2) – Server Error
+    // 0000 0011 (3) – Username already used
+    // 0000 0100 (4) – Malformed Data
+    const int OK = 0b0001;
+    const int ERR = 0b0010;
+    const int UNAME_USED = 0b0011;
+    const int MAL_DATA = 0b0100;
+
     const char* control;
     char servresp[1] = {0};
     char unamebuf[MAX_USERNAME_LENGTH] = {'\0', };
@@ -138,23 +148,33 @@ int app::add_user() {
     int numbytes = recv( sockfd, servresp, MAXCONTROLSIZE, 0 );
     int onrre = errno;
 
-    if (numbytes == -1) {
+    if ( numbytes == -1 ) {
         perror("recv");
         int e = errno;
         std::cout << "(1) errno -> " << e << std::endl;
         return APP_RESPONSE::RECV;
     }
-    else if ( numbytes==0 ) {
+    else if ( numbytes == 0 ) {
         int e = errno;
         std::cout << "(2) errno -> " << e;
-        return APP_RESPONSE::OK;
+        return APP_RESPONSE::DISCONN;
     }
 
-    int resp = atoi( servresp );
-    if ( resp == 1 ) {
-        std::cout << "Account created" << std::endl;
-    }
-    else {
-        std::cout << "Something went wrong" << std::endl;
+    switch ( atoi( servresp ) ) {
+        case OK:
+            std::cout << "Account Added. Please log in with your credentials." << std::endl;
+            break;
+        case ERR:
+            std::cout << "Server Error. Try Again." << std::endl;
+            break;
+        case UNAME_USED:
+            std::cout << "That username is already taken. Try a different name." << std::endl;
+            break;
+        case MAL_DATA:
+            std::cout << "Username or password are not valid. Try again." << std::endl;
+            break;
+        default:
+            std::cout << "Something went wrong" << std::endl;
+            break;
     }
 }
