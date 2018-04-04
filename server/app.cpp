@@ -53,7 +53,7 @@ int app::start( std::string &msg ) {
         printf("server: got connection from %s\n",(char *) inet_ntoa(their_addr.sin_addr));
         msg = inet_ntoa(their_addr.sin_addr);
 
-        if (!fork()) { // this is the child process
+        //if (!fork()) { // this is the child process
             close(sockfd); // child doesn't need the listener
             recvbuf = (char *) calloc(128,sizeof(char));
 
@@ -103,7 +103,7 @@ int app::start( std::string &msg ) {
 
             free(recvbuf);
             return APP_RESPONSE::OK;
-        }
+        //}
         close(new_fd);  // parent doesn't need this
     }
 }
@@ -153,28 +153,17 @@ int app::addUser() {
 
     // only check if the username exists if the name is valid
     control = std::to_string( OK ).c_str( );
-    if ( ERRCHECKER::USERNAME( unamebuf ) )
+    if ( ERRCHECKER::USERNAME( unamebuf ) && ERRCHECKER::PASSWORD( passbuf ) )
     {
-        if ( db.checkIfUserExists(unamebuf) == 1 )
-        {
-            if ( ERRCHECKER::PASSWORD( passbuf ) )
-            {
-                // All good data, now it depends on if the database works
-                control = std::to_string( OK ).c_str( );
-                if ( db.addUser(unamebuf, passbuf) == -1 ) {
-                    control = std::to_string( ERR ).c_str( );
-                }
+        int ex = db.addUser( unamebuf, passbuf );
+        int e = errno;
+        if ( ex == -1 ) {
+            if ( e == EEXIST ) {
+                control = std::to_string( UNAME_USED ).c_str();
             }
-            else
-            {
-                // Bad data
-                control = std::to_string( MAL_DATA ).c_str( );
+            else {
+                control = std::to_string( ERR ).c_str();
             }
-        }
-        else
-        {
-            // Username already used
-            control = std::to_string( UNAME_USED ).c_str( );
         }
     }
     else

@@ -1,60 +1,29 @@
+#include <sys/stat.h>
 #include "Database.h"
 
-int Database::checkIfUserExists(const std::string &uname) {
-    int timeout_threshold = 100;
-    int timeout_counter = 0;
-
-    user_file.open( user_file_path, std::fstream::in );
-    while ( !user_file ) {
-        ++timeout_counter;
-
-        if ( timeout_counter > timeout_threshold ) {
-            return -1;
-        }
-
-        user_file.open( user_file_path, std::fstream::in );
-    }
-
-//    if (!user_file) {
-//        std::cerr << "Unable to open file datafile.txt";
-//        return -1;
-//    }
-
-    std::string u;
-    while ( user_file >> u && !u.empty() ) {
-        if ( u == uname ) {
-            return 0;
-        }
-        user_file >> u;
-    }
-
-    user_file.close();
-    return 1;
-}
+//line.replace(line.find(deleteline),deleteline.length(),"");
+//temp << line << endl;
 
 int Database::addUser( const std::string& uname, const std::string& pass ) {
-    int timeout_threshold = 100;
-    int timeout_counter = 0;
+    int stat;
+    std::string dir = DB_DIRNAME + uname;
+    stat = mkdir( dir.c_str(), 0755 );
 
-    user_file.open( user_file_path, std::ios::app );
-    while ( !user_file ) {
-        ++timeout_counter;
-
-        if ( timeout_counter > timeout_threshold ) {
+    if ( stat == 0 ) {
+        dir = dir + "\\";
+        user_dir.open( dir + f_user, std::fstream::out );
+        if ( !user_dir ) {
             return -1;
         }
+        user_dir << pass << '\n';
+        user_dir.close();
 
-        user_file.open( user_file_path, std::fstream::app );
+        user_dir.open( dir + f_appointments, std::fstream::out );
+        if ( !user_dir ) {
+            return -1;
+        }
+        user_dir.close();
     }
 
-//    if (!user_file) {
-//        std::cerr << "Unable to open file datafile.txt";
-//        return -1;
-//    }
-
-    user_file << uname << "\n";
-    user_file << pass << "\n";
-    user_file.close();
-
-    return 1;
+    return stat;
 }

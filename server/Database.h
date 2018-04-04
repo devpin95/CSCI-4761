@@ -7,12 +7,13 @@
 
 class Database {
 public:
-    int checkIfUserExists( const std::string& uname );
     int addUser( const std::string& uname, const std::string& pass );
 
 private:
-    const std::string user_file_path = "db\\users.txt";
-    std::fstream user_file;
+    const std::string f_user = "user";  // stores user information
+    const std::string f_appointments = "appointments";  // stores user appointements
+    const std::string DB_DIRNAME = "C:\\Users\\devpin\\Documents\\School\\ComputerNetworks\\CSCI-4761\\server\\db\\";
+    std::fstream user_dir;
 };
 
 
