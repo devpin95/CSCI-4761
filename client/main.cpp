@@ -12,6 +12,7 @@ int main(int argc, char *argv[])
     int resp = clientapp.start(clientmsg, argc, argv);
     switch (resp) {
         case 0: std::cout << clientmsg << " " << "Disconnected";
+            break;
         case 1: std::cout << clientmsg << " " ; perror("gethostbyname");;
             break;
         case 2: std::cout << clientmsg << " "; perror("socket");
@@ -21,6 +22,10 @@ int main(int argc, char *argv[])
         case 4: std::cout << clientmsg << " "; perror("listen");
             break;
         case 5: std::cout << clientmsg << " "; perror("send");
+            break;
+        case 6: std::cout << clientmsg << " "; perror("recv");
+            break;
+        case 7: fprintf(stderr,"usage: client hostname\n");
             break;
         default: break;
     }

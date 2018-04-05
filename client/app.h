@@ -24,7 +24,7 @@
 class app {
 public:
     int start(std::string &msg, int argc, char *argv[]);
-    void stop();
+    void stop(){close(sockfd);};
 
     enum APP_RESPONSE {
         DISCONN = 0,
@@ -39,6 +39,7 @@ public:
 private:
     int login();
     int add_user();
+    void encrypt(char s[], uint len );
     int sockfd;
 };
 

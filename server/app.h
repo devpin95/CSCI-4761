@@ -25,7 +25,7 @@ class app {
 public:
 //    void app();
     int start(std::string &msg);
-    void stop();
+    void stop(){ close(new_fd); };
     static void sigchld_handler(int s) { while(wait(NULL) > 0); }
 
     enum APP_RESPONSE {
@@ -44,6 +44,8 @@ private:
     Database db;
     struct sockaddr_in their_addr; // connector's address information
     int addUser();
+    int login();
+    int getAppts();
     int checkIfUserExists(const std::string& uname);
 };
 

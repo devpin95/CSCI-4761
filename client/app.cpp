@@ -1,7 +1,3 @@
-//
-// Created by devpin on 3/31/2018.
-//
-
 #include "app.h"
 
 int app::start(std::string &msg, int argc, char *argv[]) {
@@ -47,7 +43,36 @@ int app::start(std::string &msg, int argc, char *argv[]) {
 
         if (choice == 1) {
            // control = C_LOGIN.c_str();
-            std::cout << "TODO" << std::endl;
+            int resp = login();
+            if (resp == -1) {
+                choice = 0;
+
+                while ( choice != 5 ) {
+                    std::cout << "1. View Appointments" << std::endl
+                              << "2. Add Appointment" << std::endl
+                              << "3. Remove Appointment" << std::endl
+                              << "4. Update Appointment" << std::endl
+                              << "5. Log out" << std::endl
+                              << ">" << std::endl;
+
+                    std::cin >> choice;
+
+                    switch (choice) {
+                        case 1:
+                            break;
+                        case 2:
+                            break;
+                        case 3:
+                            break;
+                        case 4:
+                            break;
+                        default: break;
+                    }
+                }
+            }
+            else {
+                return resp;
+            }
         }
         else if ( choice == 2 ) {
             //control = C_ADD_USER.c_str();
@@ -59,25 +84,10 @@ int app::start(std::string &msg, int argc, char *argv[]) {
         else if ( choice == 3 ) {
             return APP_RESPONSE::DISCONN;
         }
-
-//        if ((numbytes=send(sockfd, control, sizeof(char) * strlen(control), 0)) == -1) {
-//            perror("send");
-//            close(sockfd);
-//            exit(1);
-//        }
     }
-    close(sockfd);
-}
-
-void app::stop() {
-    close(sockfd);
 }
 
 int app::login() {
-
-}
-
-int app::add_user() {
     // response values
     // 0000 0001 (1) – DISCONN
     // 0000 0010 (2) – Server Error
@@ -118,7 +128,7 @@ int app::add_user() {
         }
     }
 
-    std::cin.ignore(std::numeric_limits<std::streamsize>::max(),'\n');
+    //std::cin.ignore(std::numeric_limits<std::streamsize>::max(),'\n');
 
     while(true) {
         bzero(passbuf, sizeof(passbuf));
@@ -132,6 +142,113 @@ int app::add_user() {
             std::cout << "Password must be 8-16 characters" << std::endl;
         }
     }
+
+    encrypt( passbuf, (uint)strlen(passbuf) );
+
+    if ((send(sockfd, unamebuf, MAX_USERNAME_LENGTH, 0)) == -1) {
+        int e = errno;
+        std::cout << "errno -> " << e;
+        return APP_RESPONSE::SEND;
+    }
+
+    if ((send(sockfd, passbuf, MAX_USERNAME_LENGTH, 0)) == -1) {
+        int e = errno;
+        std::cout << "errno -> " << e;
+        return APP_RESPONSE::SEND;
+    }
+
+    int numbytes = recv( sockfd, servresp, MAXCONTROLSIZE, 0 );
+    int onrre = errno;
+
+    if ( numbytes == -1 ) {
+        perror("recv");
+        int e = errno;
+        std::cout << "(1) errno -> " << e << std::endl;
+        return APP_RESPONSE::RECV;
+    }
+    else if ( numbytes == 0 ) {
+        int e = errno;
+        std::cout << "(2) errno -> " << e;
+        return APP_RESPONSE::DISCONN;
+    }
+
+    switch ( atoi( servresp ) ) {
+        case OK:
+            std::cout << "Logged in successfully" << std::endl;
+            return -1;
+        case ERR:
+            std::cout << "Server Error. Try Again." << std::endl;
+            break;
+        case UNAME_USED:
+            std::cout << "That username is already taken. Try a different name." << std::endl;
+            break;
+        case MAL_DATA:
+            std::cout << "Username or password are not valid. Try again." << std::endl;
+            break;
+        default:
+            std::cout << "Something went wrong" << std::endl;
+            break;
+    }
+    return -2;
+}
+
+int app::add_user() {
+    // response values
+    // 0000 0001 (1) – DISCONN
+    // 0000 0010 (2) – Server Error
+    // 0000 0011 (3) – Username already used
+    // 0000 0100 (4) – Malformed Data
+    const int OK = 0b0001;
+    const int ERR = 0b0010;
+    const int UNAME_USED = 0b0011;
+    const int MAL_DATA = 0b0100;
+
+    const char* control;
+    char servresp[1] = {0};
+    char unamebuf[MAX_USERNAME_LENGTH] = {'\0', };
+    char passbuf[MAX_PASSWORD_LENGTH] = {'\0', };
+    control = C_ADD_USER.c_str();
+
+    //send control byte
+    if ((send(sockfd, control, /* sizeof(char) * strlen(control) */ MAXCONTROLSIZE, 0)) == -1) {
+        int e = errno;
+        std::cout << "errno -> " << e;
+        return APP_RESPONSE::SEND;
+    }
+
+
+    std::cin.ignore(std::numeric_limits<std::streamsize>::max(),'\n');
+
+    while(true) {
+        bzero(unamebuf, sizeof(unamebuf));
+
+        std::cout << "User name (up to 20 characters): ";
+        gets(unamebuf);
+        unamebuf[sizeof(unamebuf)] = '\0';
+
+        if ( ERRCHECKER::USERNAME(unamebuf) ) {
+            break;
+        } else {
+            std::cout << unamebuf << " is not a valid username" << std::endl;
+        }
+    }
+
+    //std::cin.ignore(std::numeric_limits<std::streamsize>::max(),'\n');
+
+    while(true) {
+        bzero(passbuf, sizeof(passbuf));
+
+        std::cout << "Password (8-16 characters): ";
+        gets(passbuf);
+
+        if ( ERRCHECKER::PASSWORD(passbuf) ) {
+            break;
+        } else {
+            std::cout << "Password must be 8-16 characters" << std::endl;
+        }
+    }
+
+    encrypt( passbuf, (uint)strlen(passbuf) );
 
     if ((send(sockfd, unamebuf, MAX_USERNAME_LENGTH, 0)) == -1) {
         int e = errno;
@@ -176,5 +293,11 @@ int app::add_user() {
         default:
             std::cout << "Something went wrong" << std::endl;
             break;
+    }
+}
+
+void app::encrypt(char s[], uint len ) {
+    for ( int i = 0; i < len; ++i ) {
+        s[i] = s[i] + 13;
     }
 }

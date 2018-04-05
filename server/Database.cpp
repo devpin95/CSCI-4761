@@ -27,3 +27,26 @@ int Database::addUser( const std::string& uname, const std::string& pass ) {
 
     return stat;
 }
+
+int Database::login(const std::string &uname, const std::string &pass) {
+    int stat = 0;
+    std::string file_pass;
+    std::string dir = DB_DIRNAME + uname + "\\" + f_user;
+    user_dir.open(dir);
+
+    if ( user_dir ) {
+        user_dir >> file_pass;
+        user_dir.close();
+
+        if ( pass != file_pass ) {
+            stat = -1;
+        } else {
+            user_dir_path = DB_DIRNAME + uname + "\\";
+            logged_in = true;
+        }
+    } else {
+        stat = -1;
+    }
+
+    return stat;
+}
