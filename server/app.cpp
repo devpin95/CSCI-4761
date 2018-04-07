@@ -95,8 +95,24 @@ int app::start( std::string &msg ) {
                 }
                 else if ( atoi( &recvbuf[0] ) == C_GET_USER_APPTS_BIN )
                 {
-                    fprintf(stderr, "Calling login()\n" );
-                    int resp = login();
+                    fprintf(stderr, "Calling getAppts()\n" );
+                    int resp = getAppts();
+                    if ( resp != -1 ) {
+                        return resp;
+                    }
+                }
+                else if ( atoi( &recvbuf[0] ) == C_ADD_APPT_BIN )
+                {
+                    fprintf(stderr, "Calling addAppt()\n" );
+                    int resp = addAppt();
+                    if ( resp != -1 ) {
+                        return resp;
+                    }
+                }
+                else if ( atoi( &recvbuf[0] ) == C_DEL_APPT_BIN )
+                {
+                    fprintf(stderr, "Calling delAppt()\n" );
+                    int resp = delAppt();
                     if ( resp != -1 ) {
                         return resp;
                     }
@@ -200,7 +216,7 @@ int app::login() {
 
     printf("Received USERNAME from %s: %s\n",inet_ntoa(their_addr.sin_addr), unamebuf );
 
-    char passbuf[MAX_USERNAME_LENGTH] = { '\0', };
+    char passbuf[MAX_USERNAME_LENGTH] = { 0, };
     numbytes = recv( new_fd, passbuf, MAX_PASSWORD_LENGTH, 0 );
 
     if ( numbytes == -1 ) {
@@ -251,3 +267,130 @@ int app::login() {
     return -1;
 }
 
+int app::getAppts() {
+    user_appointments.clear();
+    int size = db.getAppts( user_appointments );
+
+    if ( size != -1 ) {
+        // send the number of appointments
+        if ( ( send( new_fd, std::to_string(size).c_str(), strlen( std::to_string(size).c_str() ), 0 ) ) == -1 )
+        {
+            return APP_RESPONSE::SEND;
+        }
+
+        for ( int i = 0; i < size; ++i) {
+            if ( ( send( new_fd, &user_appointments[i].ID, sizeof(int), 0 ) ) == -1 ) {
+                return APP_RESPONSE::SEND;
+            }
+
+            // ----------------------------------------------------------------------------------------------------------------------
+            // send the size
+            if ( ( send( new_fd, std::to_string(user_appointments[i].begin.length() + 1).c_str(), MAXCONTROLSIZE_DATA, 0 ) ) == -1 ) {
+                return APP_RESPONSE::SEND;
+            }
+            // send the string
+            if ( ( send( new_fd, user_appointments[i].begin.c_str(), user_appointments[i].begin.length() + 1, 0 ) ) == -1 ) {
+                return APP_RESPONSE::SEND;
+            }
+
+            // ----------------------------------------------------------------------------------------------------------------------
+            // send the size
+            if ( ( send( new_fd, std::to_string(user_appointments[i].end.length() + 1).c_str(), MAXCONTROLSIZE_DATA, 0 ) ) == -1 ) {
+                return APP_RESPONSE::SEND;
+            }
+            // send the string
+            if ( ( send( new_fd, user_appointments[i].end.c_str(), user_appointments[i].end.length() + 1, 0 ) ) == -1 ) {
+                return APP_RESPONSE::SEND;
+            }
+
+            // ----------------------------------------------------------------------------------------------------------------------
+            // send the size
+            if ( ( send( new_fd, std::to_string(user_appointments[i].place.length() + 1).c_str(), MAXCONTROLSIZE_DATA, 0 ) ) == -1 ) {
+                return APP_RESPONSE::SEND;
+            }
+            // send the string
+            if ( ( send( new_fd, user_appointments[i].place.c_str(), user_appointments[i].place.length() + 1, 0 ) ) == -1 ) {
+                return APP_RESPONSE::SEND;
+            }
+
+            // ----------------------------------------------------------------------------------------------------------------------
+            // send the size
+            if ( ( send( new_fd, std::to_string(user_appointments[i].contents.length() + 1).c_str(), MAXCONTROLSIZE_DATA, 0 ) ) == -1 ) {
+                return APP_RESPONSE::SEND;
+            }
+            // send the string
+            if ( ( send( new_fd, user_appointments[i].contents.c_str(), user_appointments[i].contents.length() + 1, 0 ) ) == -1 ) {
+                return APP_RESPONSE::SEND;
+            }
+        }
+    }
+    return -1;
+}
+
+int app::addAppt() {
+    // response values
+    // 0000 0001 (1) – OK
+    // 0000 0010 (2) - ERR
+    // 0000 0011 (3) – Malformed Data
+
+    char beginbuf[APPT_BEGIN_END_LENGTH + 1] = {0, };
+    char endbuf[APPT_BEGIN_END_LENGTH + 1] = {0, };
+    char placebuf[APPT_PLACE_LENGTH + 1] = {0, };
+    char contentsbuf[APPT_CONTENTS_LENGTH + 1] = {0, };
+
+    //------------------------------------------------------------------------
+    // get the appt begin
+    char data_length_buf[32] = {0, };
+    int numbytes = recv( new_fd, data_length_buf, MAXCONTROLSIZE_DATA, 0 );
+    if ( numbytes == -1 ) { return APP_RESPONSE::RECV; }
+    else if ( numbytes == 0 ) { return APP_RESPONSE::OK; }
+    numbytes = recv( new_fd, beginbuf, atoi(data_length_buf), 0 );
+    if ( numbytes == -1 ) return APP_RESPONSE::RECV;
+    else if ( numbytes == 0 ) return APP_RESPONSE::OK;
+
+    //------------------------------------------------------------------------
+    // get the appt end
+    bzero(data_length_buf, 0);
+    numbytes = recv( new_fd, data_length_buf, MAXCONTROLSIZE_DATA, 0 );
+    if ( numbytes == -1 ) { return APP_RESPONSE::RECV; }
+    else if ( numbytes == 0 ) { return APP_RESPONSE::OK; }
+    numbytes = recv( new_fd, endbuf, atoi(data_length_buf), 0 );
+    if ( numbytes == -1 ) return APP_RESPONSE::RECV;
+    else if ( numbytes == 0 ) return APP_RESPONSE::OK;
+
+    //------------------------------------------------------------------------
+    // get the appt place
+    bzero(data_length_buf, 0);
+    numbytes = recv( new_fd, data_length_buf, MAXCONTROLSIZE_DATA, 0 );
+    if ( numbytes == -1 ) { return APP_RESPONSE::RECV; }
+    else if ( numbytes == 0 ) { return APP_RESPONSE::OK; }
+    numbytes = recv( new_fd, placebuf, atoi(data_length_buf), 0 );
+    if ( numbytes == -1 ) return APP_RESPONSE::RECV;
+    else if ( numbytes == 0 ) return APP_RESPONSE::OK;
+
+    //------------------------------------------------------------------------
+    // get the appt contents
+    bzero(data_length_buf, 0);
+    numbytes = recv( new_fd, data_length_buf, MAXCONTROLSIZE_DATA, 0 );
+    if ( numbytes == -1 ) { return APP_RESPONSE::RECV; }
+    else if ( numbytes == 0 ) { return APP_RESPONSE::OK; }
+    numbytes = recv( new_fd, contentsbuf, atoi(data_length_buf), 0 );
+    if ( numbytes == -1 ) return APP_RESPONSE::RECV;
+    else if ( numbytes == 0 ) return APP_RESPONSE::OK;
+
+    if ( db.addAppt( beginbuf, endbuf, placebuf, contentsbuf ) == 0 ) {
+        return -1;
+    }
+    else {
+        //send a response back
+    }
+}
+
+int app::delAppt() {
+    int id;
+    int numbytes = recv( new_fd, &id, sizeof(int), 0 );
+    if ( db.delAppt( id ) != -1 ){
+        return -1;
+    }
+    return -1;
+}

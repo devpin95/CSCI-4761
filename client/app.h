@@ -15,6 +15,8 @@
 #include <climits>
 #include <limits>
 #include <errno.h>
+#include <vector>
+#include "Appt.h"
 #include "APP_PROTOCOL.h"
 
 #define PORT 32768 // the port client will be connecting to
@@ -38,7 +40,19 @@ public:
 
 private:
     int login();
-    int add_user();
+    int addUser();
+    int viewAppts();
+    int addAppt();
+    int delAppt();
+
+    struct appt {
+        int appt_id;
+        std::string start;
+        std::string end;
+        std::string place;
+        std::string content;
+    };
+    std::vector<Appt> user_appointments;
     void encrypt(char s[], uint len );
     int sockfd;
 };

@@ -7,6 +7,7 @@ int main(void) {
     int resp = sapp.start(servermsg);
     switch (resp) {
         case 0: std::cout << servermsg << " " << "Disconnected";
+            break;
         case 1: std::cout << servermsg << " " ; perror("socket");
             break;
         case 2: std::cout << servermsg << " "; perror("setsockopt");

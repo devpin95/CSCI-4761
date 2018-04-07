@@ -15,7 +15,9 @@
 #include <string>
 #include <errno.h>
 #include <iostream>
+#include <vector>
 #include "Database.h"
+#include "Appt.h"
 #include "APP_PROTOCOL.h"
 
 #define MYPORT 32768    // the port users will be connecting to
@@ -41,12 +43,15 @@ public:
 
 private:
     int sockfd, new_fd;
+    std::vector<Appt> user_appointments;
     Database db;
     struct sockaddr_in their_addr; // connector's address information
     int addUser();
     int login();
     int getAppts();
-    int checkIfUserExists(const std::string& uname);
+    int addAppt();
+    int delAppt();
+    //int checkIfUserExists(const std::string& uname);
 };
 
 

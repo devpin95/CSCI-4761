@@ -4,11 +4,17 @@
 #include <string>
 #include <fstream>
 #include <iostream>
+#include <vector>
+#include <sys/stat.h>
+#include "Appt.h"
 
 class Database {
 public:
     int addUser( const std::string& uname, const std::string& pass );
     int login( const std::string& uname, const std::string& pass );
+    int getAppts(std::vector<Appt> &a);
+    int addAppt( const std::string& begin, const std::string& end, const std::string& place, const std::string& contents );
+    int delAppt(const int& id);
 
 private:
     const std::string f_user = "user";  // stores user information
