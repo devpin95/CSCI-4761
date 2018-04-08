@@ -13,7 +13,7 @@ std::ostream& operator<<( std::ostream& out, const UserData& u ) {
     out << "1. Password: " << u.password << "\n";
     out << "2. Name: "<< u.name << "\n";
     out << "3. Email: " << u.email << "\n";
-    out << "4. Phone: " << u.phone << std::endl;
+    out << "4. Phone: " << u.phone;
 
     return out;
 }

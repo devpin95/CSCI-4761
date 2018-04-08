@@ -1,8 +1,5 @@
 #include <assert.h>
 #include "app.h"
-//void app::app( ) {
-//    // constructor
-//}
 
 int app::start( std::string &msg ) {
 //    int sockfd, new_fd;  // listen on sock_fd, new connection on new_fd
@@ -53,7 +50,7 @@ int app::start( std::string &msg ) {
         printf("server: got connection from %s\n",(char *) inet_ntoa(their_addr.sin_addr));
         msg = inet_ntoa(their_addr.sin_addr);
 
-        //if (!fork()) { // this is the child process
+        if (!fork()) { // this is the child process
             close(sockfd); // child doesn't need the listener
             recvbuf = (char *) calloc(128,sizeof(char));
 
@@ -72,17 +69,15 @@ int app::start( std::string &msg ) {
                     break;
                 }
 
-                //printf("numbytes: %d\n", numbytes);
-
                 //..... Do stuff
                 if ( cont == C_DISCONN_BIN )
                 {
-                    fprintf(stderr, "User disconnecting\n" );
+                    //fprintf(stderr, "User disconnecting\n" );
                     return APP_RESPONSE::OK;
                 }
                 else if ( cont == C_ADD_USER_BIN ) {
-                    fprintf(stderr, "Calling addUser()\n" );
-                    fflush(stderr);
+                    //fprintf(stderr, "Calling addUser()\n" );
+                    //fflush(stderr);
                     int resp = addUser();
                     if ( resp != -1 ) {
                         return resp;
@@ -90,7 +85,7 @@ int app::start( std::string &msg ) {
                 }
                 else if ( cont == C_LOGIN_BIN )
                 {
-                    fprintf(stderr, "Calling login()\n" );
+                    //fprintf(stderr, "Calling login()\n" );
                     int resp = login();
                     if ( resp != -1 ) {
                         return resp;
@@ -98,8 +93,8 @@ int app::start( std::string &msg ) {
                 }
                 else if ( cont == C_GET_USER_APPTS_BIN )
                 {
-                    fprintf(stderr, "Calling getAppts()\n" );
-                    fflush(stderr);
+                    //fprintf(stderr, "Calling getAppts()\n" );
+                    //fflush(stderr);
                     int resp = getAppts();
                     if ( resp != -1 ) {
                         return resp;
@@ -107,8 +102,8 @@ int app::start( std::string &msg ) {
                 }
                 else if ( cont == C_ADD_APPT_BIN )
                 {
-                    fprintf(stderr, "Calling addAppt()\n" );
-                    fflush(stderr);
+                    //fprintf(stderr, "Calling addAppt()\n" );
+                    //fflush(stderr);
                     int resp = addAppt();
                     if ( resp != -1 ) {
                         return resp;
@@ -116,8 +111,8 @@ int app::start( std::string &msg ) {
                 }
                 else if ( cont == C_DEL_APPT_BIN )
                 {
-                    fprintf(stderr, "Calling delAppt()\n" );
-                    fflush(stderr);
+                    //fprintf(stderr, "Calling delAppt()\n" );
+                    //fflush(stderr);
                     int resp = delAppt();
                     if ( resp != -1 ) {
                         return resp;
@@ -125,8 +120,8 @@ int app::start( std::string &msg ) {
                 }
                 else if ( cont == C_UPDATE_APPT_BIN )
                 {
-                    fprintf(stderr, "Calling updateAppt()\n" );
-                    fflush(stderr);
+                    //fprintf(stderr, "Calling updateAppt()\n" );
+                    //fflush(stderr);
                     int resp = updateAppt();
                     if ( resp != -1 ) {
                         return resp;
@@ -134,8 +129,8 @@ int app::start( std::string &msg ) {
                 }
                 else if ( cont == C_GET_USER_DATA_BIN )
                 {
-                    fprintf(stderr, "Calling getUserData()\n" );
-                    fflush(stderr);
+                    //fprintf(stderr, "Calling getUserData()\n" );
+                    //fflush(stderr);
                     int resp = getUserData();
                     if ( resp != -1 ) {
                         return resp;
@@ -143,8 +138,8 @@ int app::start( std::string &msg ) {
                 }
                 else if ( cont == C_UPDATE_USER_DATA_BIN )
                 {
-                    fprintf(stderr, "Calling updateUserData()\n" );
-                    fflush(stderr);
+                    //fprintf(stderr, "Calling updateUserData()\n" );
+                    //fflush(stderr);
                     int resp = updateUserData();
                     if ( resp != -1 ) {
                         return resp;
@@ -152,7 +147,7 @@ int app::start( std::string &msg ) {
                 }
             }
             return APP_RESPONSE::OK;
-        //}
+        }
     }
 }
 
@@ -168,60 +163,69 @@ int app::addUser() {
     const int UNAME_USED = 0b0011;
     const int MAL_DATA = 0b0100;
 
-    char unamebuf[MAX_USERNAME_LENGTH] = { 0, };
-    int numbytes = recv( new_fd, unamebuf, MAX_USERNAME_LENGTH, 0 );
-    fprintf(stderr, "(2) numbytes = %d\n", numbytes);
+    char unamebuf[UserData::MAX_USERNAME_LENGTH] = { 0, };
+    // get the data size
+    int data_length;
+    int numbytes = recv( new_fd, &data_length, sizeof(int), 0 );
     if ( numbytes == -1 ) return APP_RESPONSE::RECV;
     else if ( numbytes == 0 ) return APP_RESPONSE::OK;
+    assert(numbytes==sizeof(int));
+    // get the username
+    numbytes = recv( new_fd, unamebuf, data_length, 0 );
+    if ( numbytes == -1 ) return APP_RESPONSE::RECV;
+    else if ( numbytes == 0 ) return APP_RESPONSE::OK;
+    assert(numbytes==data_length);
 
-    printf("Received USERNAME from %s: %s\n",inet_ntoa(their_addr.sin_addr), unamebuf );
+    char passbuf[UserData::MAX_PASSWORD_LENGTH] = { '\0', };
+    // get the data size
+    numbytes = recv( new_fd, &data_length, sizeof(int), 0 );
+    if ( numbytes == -1 ) return APP_RESPONSE::RECV;
+    else if ( numbytes == 0 ) return APP_RESPONSE::OK;
+    assert(numbytes==sizeof(int));
 
-    char passbuf[MAX_USERNAME_LENGTH] = { '\0', };
-    numbytes = recv( new_fd, passbuf, MAX_USERNAME_LENGTH, 0 );
-
-    if ( numbytes == -1 ) {
-        int e = errno;
-        std::cout << "errno -> " << e;
-        return APP_RESPONSE::RECV;
-    }
-    else if ( numbytes == 0 ) {
-        int e = errno;
-        std::cout << "errno -> " << e;
-        return APP_RESPONSE::OK;
-    }
-
-    printf( "Received PASSWORD from %s: %s\n",inet_ntoa( their_addr.sin_addr ), passbuf );
-    std::cout << "SENDING LOGIN RESPONSE... ";
+    numbytes = recv( new_fd, passbuf, data_length, 0 );
+    if ( numbytes == -1 ) { return APP_RESPONSE::RECV; }
+    else if ( numbytes == 0 ) { return APP_RESPONSE::OK; }
+    assert(numbytes==data_length);
 
     std::string control;
 
     // only check if the username exists if the name is valid
     control = std::to_string( OK );
-    if ( ERRCHECKER::USERNAME( unamebuf ) && ERRCHECKER::PASSWORD( passbuf ) )
+    if ( UserData::USERNAME( unamebuf ) && UserData::PASSWORD( passbuf ) )
     {
         int ex = db.addUser( unamebuf, passbuf );
         int e = errno;
         if ( ex == -1 ) {
             if ( e == EEXIST ) {
-                control = std::to_string( UNAME_USED );
+                // username taken
+                if ((numbytes=send(new_fd, &UNAME_USED, sizeof(int), 0)) == -1) {
+                    return APP_RESPONSE::SEND;
+                }
+                assert( numbytes == sizeof(int) );
             }
             else {
-                control = std::to_string( ERR );
+                // err
+                if ((numbytes=send(new_fd, &ERR, sizeof(int), 0)) == -1) {
+                    return APP_RESPONSE::SEND;
+                }
+                assert( numbytes == sizeof(int) );
             }
+        } else if ( ex == 0) {
+            // ok
+            if ((numbytes=send(new_fd, &OK, sizeof(int), 0)) == -1) {
+                return APP_RESPONSE::SEND;
+            }
+            assert( numbytes == sizeof(int) );
         }
     }
     else
     {
         // Bad data
-        control = std::to_string( MAL_DATA );
-    }
-
-    std::cout << control << std::endl;
-    if ( ( send( new_fd, control.c_str(), MAXCONTROLSIZE, 0 ) ) == -1 )
-    {
-        int e = errno;
-        std::cout << "(-1) errno -> " << e;
-        return APP_RESPONSE::SEND;
+        if ((numbytes=send(new_fd, &MAL_DATA, sizeof(int), 0)) == -1) {
+            return APP_RESPONSE::SEND;
+        }
+        assert( numbytes == sizeof(int) );
     }
 
     return -1;
@@ -234,66 +238,98 @@ int app::login() {
     //0000 0011 (3) – Username/password don’t exist
     //0000 0100 (4) - Malformed data
 
+    char unamebuf[UserData::MAX_USERNAME_LENGTH] = { 0, };
+    char passbuf[UserData::MAX_PASSWORD_LENGTH] = { 0, };
+
+    // get the data size
+    int data_length;
+    int numbytes = recv( new_fd, &data_length, sizeof(int), 0 );
+    if ( numbytes == -1 ) return APP_RESPONSE::RECV;
+    else if ( numbytes == 0 ) return APP_RESPONSE::OK;
+    assert(numbytes==sizeof(int));
+
+    // get the data
+    numbytes = recv( new_fd, unamebuf, data_length, 0 );
+    if ( numbytes == -1 ) return APP_RESPONSE::RECV;
+    else if ( numbytes == 0 ) return APP_RESPONSE::OK;
+    assert(numbytes==data_length);
+
+    // get the data size
+    numbytes = recv( new_fd, &data_length, sizeof(int), 0 );
+    if ( numbytes == -1 ) return APP_RESPONSE::RECV;
+    else if ( numbytes == 0 ) return APP_RESPONSE::OK;
+    assert(numbytes==sizeof(int));
+
+    // get the data
+    numbytes = recv( new_fd, passbuf, data_length, 0 );
+    if ( numbytes == -1 ) return APP_RESPONSE::RECV;
+    else if ( numbytes == 0 ) return APP_RESPONSE::OK;
+    assert(numbytes==data_length);
+//
+//    numbytes = recv( new_fd, passbuf, MAX_PASSWORD_LENGTH, 0 );
+//
+//    if ( numbytes == -1 ) {
+//        int e = errno;
+//        std::cout << "errno -> " << e;
+//        return APP_RESPONSE::RECV;
+//    }
+//    else if ( numbytes == 0 ) {
+//        int e = errno;
+//        std::cout << "errno -> " << e;
+//        return APP_RESPONSE::OK;
+//    }
+
+
+    std::string control;
+
+    // response values
+    //0000 0001 (1) – OK
+    //0000 0010 (2) – Server Error
+    //0000 0011 (3) – Username/password don’t exist
+    //0000 0100 (4) - Malformed data
+
     const int OK = 0b0001;
     const int ERR = 0b0010;
     const int UNAMEPASS_NEX = 0b0011;
     const int MAL_DATA = 0b0100;
 
-    char unamebuf[MAX_USERNAME_LENGTH] = { 0, };
-    int numbytes = recv( new_fd, unamebuf, MAX_USERNAME_LENGTH, 0 );
-    fprintf(stderr, "(2) numbytes = %d\n", numbytes);
-    if ( numbytes == -1 ) return APP_RESPONSE::RECV;
-    else if ( numbytes == 0 ) return APP_RESPONSE::OK;
-
-    printf("Received USERNAME from %s: %s\n",inet_ntoa(their_addr.sin_addr), unamebuf );
-
-    char passbuf[MAX_USERNAME_LENGTH] = { 0, };
-    numbytes = recv( new_fd, passbuf, MAX_PASSWORD_LENGTH, 0 );
-
-    if ( numbytes == -1 ) {
-        int e = errno;
-        std::cout << "errno -> " << e;
-        return APP_RESPONSE::RECV;
-    }
-    else if ( numbytes == 0 ) {
-        int e = errno;
-        std::cout << "errno -> " << e;
-        return APP_RESPONSE::OK;
-    }
-
-    printf( "Received PASSWORD from %s: %s\n",inet_ntoa( their_addr.sin_addr ), passbuf );
-    std::cout << "SENDING LOGIN RESPONSE... ";
-
-    std::string control;
-
     // only check if the username exists if the name is valid
-    control = std::to_string( OK );
-    if ( ERRCHECKER::USERNAME( unamebuf ) && ERRCHECKER::PASSWORD( passbuf ) )
+    if ( UserData::USERNAME( unamebuf ) && UserData::PASSWORD( passbuf ) )
     {
-        std::cout << "LOGGING IN" << std::endl;
         int ex = db.login( unamebuf, passbuf );
-        int e = errno;
-        if ( ex == -1 ) {
-            if ( e == EEXIST ) {
-                control = std::to_string( UNAMEPASS_NEX );
+        if ( ex == 0 )
+        {
+            // ok
+            if ((numbytes=send(new_fd, &OK, sizeof(int), 0)) == -1) {
+                return APP_RESPONSE::SEND;
             }
-            else {
-                control = std::to_string( ERR );
+            assert( numbytes == sizeof(int) );
+
+        }
+        else if ( ex == 1 )
+        {
+                //username/password mismatch
+                if ((numbytes=send(new_fd, &UNAMEPASS_NEX, sizeof(int), 0)) == -1) {
+                    return APP_RESPONSE::SEND;
+                }
+                assert( numbytes == sizeof(int) );
+        }
+        else if ( ex == -1 )
+        {
+            //server error
+            if ((numbytes=send(new_fd, &ERR, sizeof(int), 0)) == -1) {
+                return APP_RESPONSE::SEND;
             }
+            assert( numbytes == sizeof(int) );
         }
     }
     else
     {
         // Bad data
-        control = std::to_string( MAL_DATA );
-    }
-
-    std::cout << control << std::endl;
-    if ( ( send( new_fd, control.c_str(), MAXCONTROLSIZE, 0 ) ) == -1 )
-    {
-        int e = errno;
-        std::cout << "(-1) errno -> " << e;
-        return APP_RESPONSE::SEND;
+        if ((numbytes =send(new_fd, &MAL_DATA, sizeof(int), 0)) == -1) {
+            return APP_RESPONSE::SEND;
+        }
+        assert( numbytes == sizeof(int) );
     }
 
     return -1;
@@ -310,8 +346,6 @@ int app::getAppts() {
         {
             return APP_RESPONSE::SEND;
         }
-        std::cout << std::endl << std::endl;
-        std::cout << "Num elements: " << std::to_string(size) << std::endl;
 
         for ( int i = 0; i < size; ++i) {
             if ( ( send( new_fd, &user_appointments[i].ID, sizeof(int), 0 ) ) == -1 ) {
@@ -395,66 +429,146 @@ int app::addAppt() {
 
     //------------------------------------------------------------------------
     // get the appt begin
-    char data_length_buf[32] = {0, };
-    int numbytes = recv( new_fd, data_length_buf, MAXCONTROLSIZE_DATA, 0 );
+    int data_length;
+    int numbytes = recv( new_fd, &data_length, sizeof(int), 0 );
     if ( numbytes == -1 ) { return APP_RESPONSE::RECV; }
     else if ( numbytes == 0 ) { return APP_RESPONSE::OK; }
-    numbytes = recv( new_fd, beginbuf, atoi(data_length_buf), 0 );
+    numbytes = recv( new_fd, beginbuf, data_length, 0 );
     if ( numbytes == -1 ) return APP_RESPONSE::RECV;
     else if ( numbytes == 0 ) return APP_RESPONSE::OK;
 
     //------------------------------------------------------------------------
     // get the appt end
-    bzero(data_length_buf, 0);
-    numbytes = recv( new_fd, data_length_buf, MAXCONTROLSIZE_DATA, 0 );
+    numbytes = recv( new_fd, &data_length, sizeof(int), 0 );
     if ( numbytes == -1 ) { return APP_RESPONSE::RECV; }
     else if ( numbytes == 0 ) { return APP_RESPONSE::OK; }
-    numbytes = recv( new_fd, endbuf, atoi(data_length_buf), 0 );
+    numbytes = recv( new_fd, endbuf, data_length, 0 );
     if ( numbytes == -1 ) return APP_RESPONSE::RECV;
     else if ( numbytes == 0 ) return APP_RESPONSE::OK;
 
     //------------------------------------------------------------------------
     // get the appt place
-    bzero(data_length_buf, 0);
-    numbytes = recv( new_fd, data_length_buf, MAXCONTROLSIZE_DATA, 0 );
+    numbytes = recv( new_fd, &data_length, sizeof(int), 0 );
     if ( numbytes == -1 ) { return APP_RESPONSE::RECV; }
     else if ( numbytes == 0 ) { return APP_RESPONSE::OK; }
-    numbytes = recv( new_fd, placebuf, atoi(data_length_buf), 0 );
+    numbytes = recv( new_fd, placebuf, data_length, 0 );
     if ( numbytes == -1 ) return APP_RESPONSE::RECV;
     else if ( numbytes == 0 ) return APP_RESPONSE::OK;
 
     //------------------------------------------------------------------------
     // get the appt contents
-    bzero(data_length_buf, 0);
-    numbytes = recv( new_fd, data_length_buf, MAXCONTROLSIZE_DATA, 0 );
+    numbytes = recv( new_fd, &data_length, sizeof(int), 0 );
     if ( numbytes == -1 ) { return APP_RESPONSE::RECV; }
     else if ( numbytes == 0 ) { return APP_RESPONSE::OK; }
-    numbytes = recv( new_fd, contentsbuf, atoi(data_length_buf), 0 );
+    numbytes = recv( new_fd, contentsbuf, data_length, 0 );
     if ( numbytes == -1 ) return APP_RESPONSE::RECV;
     else if ( numbytes == 0 ) return APP_RESPONSE::OK;
 
-    if ( db.addAppt( beginbuf, endbuf, placebuf, contentsbuf ) == 0 ) {
-        return -1;
+    // response values
+    // 0000 0001 (1) – OK
+    // 0000 0010 (2) - ERR
+    // 0000 0011 (3) – Malformed Data
+    const int OK = 0b0001;
+    const int ERR = 0b0010;
+    const int MAL = 0b0011;
+
+    if ( Appt::TIME( beginbuf ) && Appt::TIME( endbuf ) && Appt::PLACE( placebuf ) && Appt::CONTENTS( contentsbuf ) ) {
+        if (db.addAppt(beginbuf, endbuf, placebuf, contentsbuf) == 0)
+        {
+            // ok
+            if ((send(new_fd, &OK, sizeof(int), 0)) == -1) {
+                return APP_RESPONSE::SEND;
+            }
+        }
+        else
+        {
+            // server error
+            if ((send(new_fd, &ERR, sizeof(int), 0)) == -1) {
+                return APP_RESPONSE::SEND;
+            }
+        }
     }
-    else {
-        //send a response back
+    else
+    {
+        //mal data
+        if ((send(new_fd, &MAL, sizeof(int), 0)) == -1) {
+            return APP_RESPONSE::SEND;
+        }
     }
+
+    return -1;
 }
 
 int app::delAppt() {
+    // response values
+    // 0000 0001 (1) – OK
+    // 0000 0010 (2) - ERR
+    // 0000 0011 (3) – NOEXIST
+    // 0000 0100 (4) - MALFORMED DATA
+
     int id;
 
     int numbytes = recv( new_fd, &id, sizeof(int), 0 );
     if ( numbytes == -1 ) { return APP_RESPONSE::RECV; }
     else if ( numbytes == 0 ) { return APP_RESPONSE::OK; }
+    assert( numbytes == sizeof(int) );
 
-    if ( db.delAppt( id ) != -1 ){
-        return -1;
+    // response values
+    // 0000 0001 (1) – OK
+    // 0000 0010 (2) - ERR
+    // 0000 0011 (3) – NOEXIST
+    // 0000 0100 (4) - MALFORMED DATA
+    const int OK = 0b0001;
+    const int ERR = 0b0010;
+    const int NOEXIST = 0b0011;
+    const int MAL = 0b0100;
+
+    if ( Appt::I( id ) ) {
+        int re = db.delAppt( id );
+
+        if ( re == 1 )
+        {
+            // ok
+            if ((numbytes=send(new_fd, &OK, sizeof(int), 0)) == -1) {
+                return APP_RESPONSE::SEND;
+            }
+            assert( numbytes == sizeof(int) );
+        }
+        else if ( re == 0 )
+        {
+            // no appt found with id
+            if (numbytes = (send(new_fd, &NOEXIST, sizeof(int), 0)) == -1) {
+                return APP_RESPONSE::SEND;
+            }
+            assert( numbytes == sizeof(int) );
+        }
+        else
+        {
+            // server error
+            if ((numbytes=send(new_fd, &ERR, sizeof(int), 0)) == -1) {
+                return APP_RESPONSE::SEND;
+            }
+            assert( numbytes == sizeof(int) );
+        }
     }
+    else
+    {
+        //mal data
+        if ((numbytes =send(new_fd, &MAL, sizeof(int), 0)) == -1) {
+            return APP_RESPONSE::SEND;
+        }
+        assert( numbytes == sizeof(int) );
+    }
+
     return -1;
 }
 
 int app::updateAppt() {
+    // response values
+    // 0000 0001 (1) – OK
+    // 0000 0010 (2) - ERR
+    // 0000 0011 (3) – Malformed Data
+
     int id;
     int numbytes = recv( new_fd, &id, sizeof(int), 0 );
     if ( numbytes == -1 ) { return APP_RESPONSE::RECV; }
@@ -505,9 +619,48 @@ int app::updateAppt() {
     if ( numbytes == -1 ) return APP_RESPONSE::RECV;
     else if ( numbytes == 0 ) return APP_RESPONSE::OK;
 
-    if ( db.updateAppt( id, beginbuf, endbuf, placebuf, contentsbuf ) != -1 ){
-        return -1;
+
+    // response values
+    // 0000 0001 (1) – OK
+    // 0000 0010 (2) - ERR
+    // 0000 0011 (3) - NOTFOUND
+    // 0000 0100 (4) – Malformed Data
+    const int OK = 0b0001;
+    const int ERR = 0b0010;
+    const int NOTFOUND = 0b0011;
+    const int MAL = 0b0100;
+
+    if ( Appt::TIME( beginbuf ) && Appt::TIME( endbuf ) && Appt::PLACE( placebuf ) && Appt::CONTENTS( contentsbuf ) ) {
+        int re = db.updateAppt( id, beginbuf, endbuf, placebuf, contentsbuf );
+        if ( re == 0 ){
+            // ok
+            if ((send(new_fd, &OK, sizeof(int), 0)) == -1) {
+                return APP_RESPONSE::SEND;
+            }
+        }
+        else if ( re == -1 )
+        {
+            // server error
+            if ((send(new_fd, &ERR, sizeof(int), 0)) == -1) {
+                return APP_RESPONSE::SEND;
+            }
+        }
+        else if ( re == 1 )
+        {
+            // server error
+            if ((send(new_fd, &NOTFOUND, sizeof(int), 0)) == -1) {
+                return APP_RESPONSE::SEND;
+            }
+        }
     }
+    else
+    {
+        //mal data
+        if ((send(new_fd, &MAL, sizeof(int), 0)) == -1) {
+            return APP_RESPONSE::SEND;
+        }
+    }
+
     return -1;
 }
 
@@ -587,11 +740,12 @@ int app::updateUserData() {
     else if ( numbytes == 0 ) { return APP_RESPONSE::OK; }
 
     int data_length;
-    char passbuf[MAX_PASSWORD_LENGTH+1] = {0, };
-    char namebuf[MAX_NAME_LENGTH+1] = {0, };
-    char emailbuf[MAX_EMAIL_LENGTH+1] = {0, };
-    char phonebuf[MAX_PHONE_LENGTH+1] = {0, };
+    char passbuf[UserData::MAX_PASSWORD_LENGTH+1] = {0, };
+    char namebuf[UserData::MAX_NAME_LENGTH+1] = {0, };
+    char emailbuf[UserData::MAX_EMAIL_LENGTH+1] = {0, };
+    char phonebuf[UserData::MAX_PHONE_LENGTH+1] = {0, };
 
+    bool valid = false;
     switch ( sec_control ) {
         case C_UP_PASS:
             //------------------------------------------------------------------------
@@ -611,7 +765,10 @@ int app::updateUserData() {
             assert(numbytes==data_length);
             //------------------------------------------------------------------------
 
-            userdata.password = passbuf;
+            if ( UserData::PASSWORD( passbuf ) ) {
+                valid = true;
+                userdata.password = passbuf;
+            }
 
             break;
         case C_UP_NAME:
@@ -632,7 +789,10 @@ int app::updateUserData() {
             assert(numbytes==data_length);
             //------------------------------------------------------------------------
 
-            userdata.name = namebuf;
+            if ( UserData::NAME( namebuf ) ) {
+                valid = true;
+                userdata.name = namebuf;
+            }
             break;
         case C_UP_EMAIL:
             //------------------------------------------------------------------------
@@ -652,7 +812,10 @@ int app::updateUserData() {
             assert(numbytes==data_length);
             //------------------------------------------------------------------------
 
-            userdata.email = emailbuf;
+            if ( UserData::EMAIL( emailbuf ) ) {
+                valid = true;
+                userdata.email = emailbuf;
+            }
             break;
         case C_UP_PHONE:
             //------------------------------------------------------------------------
@@ -672,13 +835,49 @@ int app::updateUserData() {
             assert(numbytes==data_length);
             //------------------------------------------------------------------------
 
-            userdata.phone = phonebuf;
+            if ( UserData::PHONE( phonebuf ) ) {
+                valid = true;
+                userdata.phone = phonebuf;
+            }
             break;
         default:
             break;
     }
 
-    db.updateUserData( userdata );
+    // response values
+    // 0000 0001 (1) – OK
+    // 0000 0010 (2) - ERR
+    // 0000 0011 (3) – NOEXIST
+    // 0000 0100 (4) - MALFORMED DATA
+    const int OK = 0b0001;
+    const int ERR = 0b0010;
+    const int MAL = 0b0011;
+
+    if ( valid ) {
+        int re = db.updateUserData(userdata);
+
+        if ( re == 0 ) {
+            // ok
+            if ((numbytes=send(new_fd, &OK, sizeof(int), 0)) == -1) {
+                return APP_RESPONSE::SEND;
+            }
+            assert( numbytes == sizeof(int) );
+        }
+        else if ( re == -1 ) {
+            //server error
+            if ((numbytes=send(new_fd, &ERR, sizeof(int), 0)) == -1) {
+                return APP_RESPONSE::SEND;
+            }
+            assert( numbytes == sizeof(int) );
+        }
+    }
+    else {
+        // mal data
+        if ((numbytes=send(new_fd, &MAL, sizeof(int), 0)) == -1) {
+            return APP_RESPONSE::SEND;
+        }
+        assert( numbytes == sizeof(int) );
+    }
 
     return -1;
 }

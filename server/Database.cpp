@@ -25,6 +25,10 @@ int Database::addUser( const std::string& uname, const std::string& pass ) {
 }
 
 int Database::login(const std::string &uname, const std::string &pass) {
+    // returns 0 when logged in successfully
+    // returns -1 on error
+    // returns 1 on username/password missmatch
+
     int stat = 0;
     std::string file_pass;
     std::string dir = DB_DIRNAME + uname + "/" + f_user;
@@ -36,14 +40,18 @@ int Database::login(const std::string &uname, const std::string &pass) {
 
         if ( pass != file_pass ) {
             std::cout << "Passwords dont match" << std::endl;
-            stat = -1;
+            stat = 1;
         } else {
             user_dir_path = DB_DIRNAME + uname + "/";
             logged_in = true;
         }
     } else {
-        std::cout << "Failed to open " << dir << std::endl;
-        stat = -1;
+        int e = errno;
+        if ( e == ENOENT ) {
+            stat = 1;
+        } else {
+            stat = -1;
+        }
     }
 
     return stat;
@@ -157,10 +165,15 @@ int Database::addAppt( const std::string& begin, const std::string& end, const s
 }
 
 int Database::delAppt(const int& id) {
+    // return -1 on error
+    // return 0 on not found
+    // return 1 on deleted
+
     if ( !logged_in ) {
         return -1;
     }
 
+    bool appt_delete = false;
     int max_id = 0;
     std::string ID, b, e, p, c;
     std::vector<Appt> temp_appts;
@@ -192,6 +205,7 @@ int Database::delAppt(const int& id) {
         for ( int i = 0; i < temp_appts.size(); ++i ) {
             if ( temp_appts[i].ID == id ) {
                 temp_appts.erase(temp_appts.begin()+i);
+                appt_delete = true;
                 break;
             }
         }
@@ -211,10 +225,13 @@ int Database::delAppt(const int& id) {
         return -1;
     }
 
-    return 0;
+    return appt_delete;
 }
 
 int Database::updateAppt(const int& id,const std::string& begin, const std::string& end, const std::string& place, const std::string& contents) {
+    // Returns -1 on server error
+    // returns 0 on successful update
+    // returns 1 on appt not found
     if ( !logged_in ) {
         return -1;
     }
@@ -307,6 +324,9 @@ int Database::getUserData( UserData& u ) {
 }
 
 int Database::updateUserData( UserData& u ) {
+    // returns -1 on error
+    // returns 0 on successful update
+
     std::string dir = user_dir_path + "/" + f_user;
     user_dir.open(dir);
 
@@ -314,7 +334,6 @@ int Database::updateUserData( UserData& u ) {
         user_dir << u;
         user_dir.close();
     } else {
-        std::cout << "Failed to open " << dir << std::endl;
         return -1;
     }
 

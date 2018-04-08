@@ -22,7 +22,7 @@
 #include "APP_PROTOCOL.h"
 #include "rlutil.h"
 
-#define PORT 32767 // the port client will be connecting to
+#define PORT 32765 // the port client will be connecting to
 #define MAXDATASIZE 100 // max number of bytes we can get at once
 #define MAXCONTROLSIZE 1
 
@@ -63,6 +63,7 @@ private:
     std::vector<Appt> user_appointments;
     UserData userdata;
     void encrypt(char s[], uint len );
+    void encrypt(std::string& s, uint len );
     int sockfd;
 };
 

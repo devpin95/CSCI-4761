@@ -34,12 +34,12 @@ int app::start(std::string &msg, int argc, char *argv[]) {
 
     rlutil::saveDefaultColor();
     rlutil::setColor(rlutil::GREEN);
-    std::cout << "connection has been established with server. Type any message for server" << std::endl;
+    std::cout << "connection has been established with server." << std::endl;
     rlutil::resetColor();
 
     for(;;) {
         int choice;
-        std::cout << "1. Log In" << std::endl << "2. Create Account" << std::endl
+        std::cout << std::endl << "1. Log In" << std::endl << "2. Create Account" << std::endl
                   << "3. Exit" << std::endl << "> ";
 
             std::cin >> choice;
@@ -100,7 +100,7 @@ int app::start(std::string &msg, int argc, char *argv[]) {
                     }
                 }
             }
-            else {
+            else if ( resp != -2 ){
                 return resp;
             }
         }
@@ -123,14 +123,8 @@ int app::login() {
     // 0000 0010 (2) – Server Error
     // 0000 0011 (3) – Username already used
     // 0000 0100 (4) – Malformed Data
-    const int OK = 0b0001;
-    const int ERR = 0b0010;
-    const int UNAME_USED = 0b0011;
-    const int MAL_DATA = 0b0100;
 
-    char servresp[1] = {0};
-    char unamebuf[MAX_USERNAME_LENGTH] = {'\0', };
-    char passbuf[MAX_PASSWORD_LENGTH] = {'\0', };
+    std::string unamebuf, passbuf;
 
     //send control byte
     if ((send(sockfd, &C_LOGIN_BIN, sizeof(int), 0)) == -1) {
@@ -141,13 +135,11 @@ int app::login() {
     std::cin.ignore(std::numeric_limits<std::streamsize>::max(),'\n');
 
     while(true) {
-        bzero(unamebuf, sizeof(unamebuf));
 
         std::cout << "User name: ";
-        gets(unamebuf);
-        unamebuf[sizeof(unamebuf)] = '\0';
+        getline(std::cin, unamebuf);
 
-        if ( ERRCHECKER::USERNAME(unamebuf) ) {
+        if ( UserData::USERNAME(unamebuf) ) {
             break;
         } else {
             rlutil::saveDefaultColor();
@@ -160,12 +152,10 @@ int app::login() {
     //std::cin.ignore(std::numeric_limits<std::streamsize>::max(),'\n');
 
     while(true) {
-        bzero(passbuf, sizeof(passbuf));
-
         std::cout << "Password: ";
-        gets(passbuf);
+        getline(std::cin, passbuf);
 
-        if ( ERRCHECKER::PASSWORD(passbuf) ) {
+        if ( UserData::PASSWORD(passbuf) ) {
             break;
         } else {
             rlutil::saveDefaultColor();
@@ -175,19 +165,40 @@ int app::login() {
         }
     }
 
-    encrypt( passbuf, (uint)strlen(passbuf) );
+    encrypt( passbuf, (uint)passbuf.length() );
+
+    int numbytes;
+    int data_size;
     // send the username
-    if ((send(sockfd, unamebuf, MAX_USERNAME_LENGTH, 0)) == -1) { return APP_RESPONSE::SEND; }
+    data_size = unamebuf.length() + 1;
+    if ((numbytes=send(sockfd, &data_size, sizeof(int), 0)) == -1) { return APP_RESPONSE::SEND; }
+    assert(numbytes==sizeof(int));
+    if ((send(sockfd, unamebuf.c_str(), data_size, 0)) == -1) { return APP_RESPONSE::SEND; }
+
     // send the password
-    if ((send(sockfd, passbuf, MAX_PASSWORD_LENGTH, 0)) == -1) { return APP_RESPONSE::SEND; }
+    data_size = passbuf.length() + 1;
+    if ((send(sockfd, &data_size, sizeof(int), 0)) == -1) { return APP_RESPONSE::SEND; }
+    assert(numbytes==sizeof(int));
+    if ((send(sockfd, passbuf.c_str(), data_size, 0)) == -1) { return APP_RESPONSE::SEND; }
 
-    int numbytes = recv( sockfd, servresp, MAXCONTROLSIZE, 0 );
-    int onrre = errno;
-
+    int re;
+    // get the server response
+    numbytes = recv( sockfd, &re, sizeof(int), 0 );
     if ( numbytes == -1 ) { return APP_RESPONSE::RECV; }
     else if ( numbytes == 0 ) { return APP_RESPONSE::DISCONN; }
+    assert(numbytes == sizeof(int));
 
-    switch ( atoi( servresp ) ) {
+    // response values
+    // 0000 0001 (1) – DISCONN
+    // 0000 0010 (2) – Server Error
+    // 0000 0011 (3) – Username already used
+    // 0000 0100 (4) – Malformed Data
+    const int OK = 0b0001;
+    const int ERR = 0b0010;
+    const int UNAME_USED = 0b0011;
+    const int MAL_DATA = 0b0100;
+
+    switch ( re ) {
         case OK:
             rlutil::saveDefaultColor();
             rlutil::setColor(rlutil::GREEN);
@@ -203,7 +214,7 @@ int app::login() {
         case UNAME_USED:
             rlutil::saveDefaultColor();
             rlutil::setColor(rlutil::RED);
-            std::cout << "That username is already taken. Try a different name." << std::endl;
+            std::cout << std::endl << "Username/Password do not match." << std::endl;
             rlutil::resetColor();
             break;
         case MAL_DATA:
@@ -219,6 +230,7 @@ int app::login() {
             rlutil::resetColor();
             break;
     }
+
     return -2;
 }
 
@@ -233,14 +245,10 @@ int app::addUser() {
     const int UNAME_USED = 0b0011;
     const int MAL_DATA = 0b0100;
 
-    char servresp[1] = {0};
-    char unamebuf[MAX_USERNAME_LENGTH] = {'\0', };
-    char passbuf[MAX_PASSWORD_LENGTH] = {'\0', };
+    std::string unamebuf, passbuf;
 
     //send control byte
     if ((send(sockfd, &C_ADD_USER_BIN, sizeof(int), 0)) == -1) {
-        int e = errno;
-        std::cout << "errno -> " << e;
         return APP_RESPONSE::SEND;
     }
 
@@ -248,13 +256,11 @@ int app::addUser() {
     std::cin.ignore(std::numeric_limits<std::streamsize>::max(),'\n');
 
     while(true) {
-        bzero(unamebuf, sizeof(unamebuf));
 
         std::cout << "User name (up to 20 characters): ";
-        gets(unamebuf);
-        unamebuf[sizeof(unamebuf)] = '\0';
+        getline(std::cin, unamebuf);
 
-        if ( ERRCHECKER::USERNAME(unamebuf) ) {
+        if ( UserData::USERNAME(unamebuf) ) {
             break;
         } else {
             std::cout << unamebuf << " is not a valid username" << std::endl;
@@ -264,48 +270,46 @@ int app::addUser() {
     //std::cin.ignore(std::numeric_limits<std::streamsize>::max(),'\n');
 
     while(true) {
-        bzero(passbuf, sizeof(passbuf));
 
         std::cout << "Password (8-16 characters): ";
-        gets(passbuf);
+        getline(std::cin, passbuf);
 
-        if ( ERRCHECKER::PASSWORD(passbuf) ) {
+        if ( UserData::PASSWORD(passbuf) ) {
             break;
         } else {
             std::cout << "Password must be 8-16 characters" << std::endl;
         }
     }
 
-    encrypt( passbuf, (uint)strlen(passbuf) );
+    encrypt( passbuf, (uint)passbuf.length() );
 
-    if ((send(sockfd, unamebuf, MAX_USERNAME_LENGTH, 0)) == -1) {
-        int e = errno;
-        std::cout << "errno -> " << e;
+    // send the size
+    int data_size = unamebuf.length() + 1;
+    if ((send(sockfd, &data_size, sizeof(int), 0)) == -1) {
+        return APP_RESPONSE::SEND;
+    }
+    // send the string
+    if ((send(sockfd, unamebuf.c_str(), data_size, 0)) == -1) {
         return APP_RESPONSE::SEND;
     }
 
-    if ((send(sockfd, passbuf, MAX_USERNAME_LENGTH, 0)) == -1) {
-        int e = errno;
-        std::cout << "errno -> " << e;
+    // send the size
+    data_size = passbuf.length() + 1;
+    if ((send(sockfd, &data_size, sizeof(int), 0)) == -1) {
+        return APP_RESPONSE::SEND;
+    }
+    // send the string
+    if ((send(sockfd, passbuf.c_str(), data_size, 0)) == -1) {
         return APP_RESPONSE::SEND;
     }
 
-    int numbytes = recv( sockfd, servresp, MAXCONTROLSIZE, 0 );
-    int onrre = errno;
+    int servresp;
+    int numbytes = recv( sockfd, &servresp, sizeof(int), 0 );
 
-    if ( numbytes == -1 ) {
-        perror("recv");
-        int e = errno;
-        std::cout << "(1) errno -> " << e << std::endl;
-        return APP_RESPONSE::RECV;
-    }
-    else if ( numbytes == 0 ) {
-        int e = errno;
-        std::cout << "(2) errno -> " << e;
-        return APP_RESPONSE::DISCONN;
-    }
+    if ( numbytes == -1 ) { return APP_RESPONSE::RECV; }
+    else if ( numbytes == 0 ) { return APP_RESPONSE::DISCONN; }
 
-    switch ( atoi( servresp ) ) {
+    switch ( servresp ) {
         case OK:
             std::cout << "Account Added. Please log in with your credentials." << std::endl;
             break;
@@ -368,8 +372,7 @@ int app::viewAppts() {
         //------------------------------------------------------------------------
         // get the appt begin
         int data_length;
-        numbytes = recv( sockfd, &data_length, sizeof(uint32_t), 0 );
-        //data_length = ntohl(data_length);
+        numbytes = recv( sockfd, &data_length, sizeof(int), 0 );
 
         if ( numbytes == -1 ) { return APP_RESPONSE::RECV; }
         else if ( numbytes == 0 ) {
@@ -393,7 +396,7 @@ int app::viewAppts() {
 
         //------------------------------------------------------------------------
         // get the appt end
-        numbytes = recv( sockfd, &data_length, sizeof(uint32_t), 0 );
+        numbytes = recv( sockfd, &data_length, sizeof(int), 0 );
         //data_length = ntohl(data_length);
 
         if ( numbytes == -1 ) { return APP_RESPONSE::RECV; }
@@ -475,7 +478,7 @@ int app::viewAppts() {
 
     int choice;
     do {
-        std::cout << "1. View all appointments" << std::endl
+        std::cout << std::endl << "1. View all appointments" << std::endl
                   << "2. Find appointment by time" << std::endl
                   << "3. Find appointments in time range" << std::endl
                   << "4. Cancel" << std::endl
@@ -492,13 +495,31 @@ int app::viewAppts() {
             if ( !user_appointments.empty() ) {
                 // print out the appointments
                 std::cout << std::endl << "Your schedule" << std::endl;
+
                 rlutil::saveDefaultColor();
-                rlutil::setColor(rlutil::CYAN);
-                for (Appt a : user_appointments) {
-                    //std::cout << user_appointments[i];
-                    a.operator<<(std::cout);
-                }
+                rlutil::setColor(rlutil::RED);
+                std::cout << "Red appointments indicate a schedule collision." << std::endl;
                 rlutil::resetColor();
+
+                for (Appt& a : user_appointments) {
+                    auto color = rlutil::CYAN;
+                    for ( Appt& b : user_appointments ) {
+                        // dont compare the same appointments
+                        if ( a == b ) {
+                            continue;
+                        }
+                        // If the appt starts before the range, but ends after the beginning of the range
+                        if ( ( Appt::timeLessThan(a.begin, b.begin) && Appt::timeLessThan(b.begin, a.end) ) ||
+                             ( Appt::timeLessThan(b.begin, a.begin) && Appt::timeLessThan(a.begin, b.end) ) ) {
+                            color = rlutil::RED;
+                            break;
+                        }
+                    }
+                    rlutil::saveDefaultColor();
+                    rlutil::setColor(color);
+                    a.operator<<(std::cout);
+                    rlutil::resetColor();
+                }
             }
             else {
                 // the user doesn't have any appointments
@@ -590,7 +611,12 @@ int app::viewApptsByTime() {
     // check if the user has any appointments
     if ( !temp_vector.empty() ) {
         // print out the appointments
-        std::cout << std::endl << "Appointments found for " << beginstr << std::endl;
+        std::cout << std::endl << "Appointments found for ";
+        rlutil::saveDefaultColor();
+        rlutil::setColor(rlutil::GREEN);
+        std::cout << beginstr << std::endl;
+        rlutil::resetColor();
+
         rlutil::saveDefaultColor();
         rlutil::setColor(rlutil::CYAN);
         for (Appt a : temp_vector) {
@@ -668,7 +694,7 @@ int app::viewApptsByRange() {
 
     std::string beginstr = _hh + ":" + _mm + " " + _MM + "/" + _DD + "/" + _YYYY;
 
-    std::cout << std::endl << "Begin Time (hh:mm MM/DD/YYYY 24-hour model)" << std::endl;
+    std::cout << std::endl << "End Time (hh:mm MM/DD/YYYY 24-hour model)" << std::endl;
 
     do {
         std::cout << "hh: ";
@@ -725,26 +751,49 @@ int app::viewApptsByRange() {
 
     std::string endstr = _hh + ":" + _mm + " " + _MM + "/" + _DD + "/" + _YYYY;
 
+    Appt range_appt;
+    range_appt.begin = beginstr;
+    range_appt.end = endstr;
+
     // Get the range of appointments ---------------------------------------------------------------------
     std::vector<Appt> temp_vector;
     for ( Appt& a : user_appointments ) {
-        if ( a.begin == beginstr ) {
+
+        // If the appt starts before the range, but ends after the beginning of the range
+        if ( Appt::timeLessThan(a.begin, beginstr) && Appt::timeLessThan(beginstr, a.end) ) {
             temp_vector.push_back( a );
         }
+
+        // If the appt starts after the range begins, but before the end of the range end
+        if ( Appt::timeLessThan(beginstr, a.begin) && Appt::timeLessThan(a.end, endstr) ) {
+            temp_vector.push_back( a );
+        }
+
     }
 
     // Print the appointments ----------------------------------------------------------------------------
     // check if the user has any appointments
-    if ( !user_appointments.empty() ) {
+    if ( !temp_vector.empty() ) {
         // print out the appointments
-        std::cout << std::endl << "Your schedule" << std::endl;
+        std::cout << std::endl << "Appointments scheduled between ";
         rlutil::saveDefaultColor();
-        rlutil::setColor(rlutil::CYAN);
-        for (Appt a : user_appointments) {
-            //std::cout << user_appointments[i];
-            a.operator<<(std::cout);
-        }
+        rlutil::setColor(rlutil::GREEN);
+        std::cout << beginstr;
         rlutil::resetColor();
+        std::cout << " and ";
+        rlutil::saveDefaultColor();
+        rlutil::setColor(rlutil::GREEN);
+        std::cout << endstr << std::endl;
+        rlutil::resetColor();
+
+
+        rlutil::saveDefaultColor();
+        for (Appt a : temp_vector) {
+            rlutil::saveDefaultColor();
+            rlutil::setColor(rlutil::CYAN);
+            a.operator<<(std::cout);
+            rlutil::resetColor();
+        }
     }
     else {
         // the user doesn't have any appointments
@@ -881,53 +930,94 @@ int app::addAppt() {
 
     std::string endstr = _hh + ":" + _mm + " " + _MM + "/" + _DD + "/" + _YYYY;
 
-    std::cout << std::endl << "Place ( " << APPT_PLACE_LENGTH << " characters or fewer ): ";
-    //std::cin.ignore();
     std::string place;
-    getline(std::cin, place);
+    do {
+        std::cout << std::endl << "Place ( " << APPT_PLACE_LENGTH << " characters or fewer ): ";
+        getline(std::cin, place);
+    } while ( !Appt::PLACE( place ) );
 
-    std::cout << std::endl << "Description ( " << APPT_CONTENTS_LENGTH << " characters or fewer ): ";
     std::string contents;
-    getline(std::cin, contents);
+    do {
+        std::cout << std::endl << "Description ( " << APPT_CONTENTS_LENGTH << " characters or fewer ): ";
+        getline(std::cin, contents);
+    } while ( !Appt::CONTENTS( contents ) );
 
     // ----------------------------------------------------------------------------------------------------------------------
     // send the size
-    if ( ( send( sockfd, std::to_string(beginstr.length() + 1).c_str(), MAXCONTROLSIZE_DATA, 0 ) ) == -1 ) {
+    int s = beginstr.length() + 1;
+    if ( ( send( sockfd, &s, sizeof(int), 0 ) ) == -1 ) {
         return APP_RESPONSE::SEND;
     }
     // send the begin time
-    if ( ( send( sockfd, beginstr.c_str(), beginstr.length() + 1, 0 ) ) == -1 ) {
+    if ( ( send( sockfd, beginstr.c_str(), s, 0 ) ) == -1 ) {
         return APP_RESPONSE::SEND;
     }
 
     // ----------------------------------------------------------------------------------------------------------------------
     // send the size
-    if ( ( send( sockfd, std::to_string(endstr.length() + 1).c_str(), MAXCONTROLSIZE_DATA, 0 ) ) == -1 ) {
+    s = endstr.length() + 1;
+    if ( ( send( sockfd, &s, sizeof(int), 0 ) ) == -1 ) {
         return APP_RESPONSE::SEND;
     }
     // send the end time
-    if ( ( send( sockfd, endstr.c_str(), endstr.length() + 1, 0 ) ) == -1 ) {
+    if ( ( send( sockfd, endstr.c_str(), s, 0 ) ) == -1 ) {
         return APP_RESPONSE::SEND;
     }
 
     // ----------------------------------------------------------------------------------------------------------------------
     // send the size
-    if ( ( send( sockfd, std::to_string(place.length() + 1).c_str(), MAXCONTROLSIZE_DATA, 0 ) ) == -1 ) {
+    s = place.length() + 1;
+    if ( ( send( sockfd, &s, sizeof(int), 0 ) ) == -1 ) {
         return APP_RESPONSE::SEND;
     }
     // send the place
-    if ((send(sockfd, place.c_str(), place.length() + 1, 0)) == -1) {
+    if ((send(sockfd, place.c_str(), s, 0)) == -1) {
         return APP_RESPONSE::SEND;
     }
 
     // ----------------------------------------------------------------------------------------------------------------------
     // send the size
-    if ( ( send( sockfd, std::to_string(contents.length() + 1).c_str(), MAXCONTROLSIZE_DATA, 0 ) ) == -1 ) {
+    s = contents.length() + 1;
+    if ( ( send( sockfd, &s, sizeof(int), 0 ) ) == -1 ) {
         return APP_RESPONSE::SEND;
     }
     // send the contents
-    if ((send(sockfd, contents.c_str(), contents.length() + 1, 0)) == -1) {
+    if ((send(sockfd, contents.c_str(), s, 0)) == -1) {
         return APP_RESPONSE::SEND;
+    }
+
+    // response values
+    // 0000 0001 (1) – OK
+    // 0000 0010 (2) - ERR
+    // 0000 0011 (3) – Malformed Data
+    const int OK = 0b0001;
+    const int ERR = 0b0010;
+    const int MAL = 0b0011;
+    int re;
+    int numbytes = recv( sockfd, &re, sizeof(int), 0 );
+    if ( numbytes == -1 ) { return APP_RESPONSE::RECV; }
+    else if ( numbytes == 0 ) { return APP_RESPONSE::DISCONN; }
+
+    switch (re) {
+        case 1:
+            rlutil::saveDefaultColor();
+            rlutil::setColor(rlutil::GREEN);
+            std::cout << std::endl << "Appointment added successfully" << std::endl;
+            rlutil::resetColor();
+            break;
+        case 2:
+            rlutil::saveDefaultColor();
+            rlutil::setColor(rlutil::RED);
+            std::cout << std::endl << "Server error. Please try again." << std::endl;
+            rlutil::resetColor();
+            break;
+        case 3:
+            rlutil::saveDefaultColor();
+            rlutil::setColor(rlutil::RED);
+            std::cout << std::endl << "Invalid Data. Please try again" << std::endl;
+            rlutil::resetColor();
+        default: break;
+
     }
 
     return -1;
@@ -946,19 +1036,55 @@ int app::delAppt() {
     // send control byte
     if ((send(sockfd, &id, sizeof(int), 0)) == -1) { return APP_RESPONSE::SEND; }
 
+    // response values
+    // 0000 0001 (1) – OK
+    // 0000 0010 (2) - ERR
+    // 0000 0011 (3) – NOEXIST
+    // 0000 0100 (4) - MALFORMED DATA
+    const int OK = 0b0001;
+    const int ERR = 0b0010;
+    const int NOEXIST = 0b0011;
+    const int MAL = 0b0100;
+
+    int re;
+    int numbytes = recv( sockfd, &re, sizeof(int), 0 );
+    if ( numbytes == -1 ) { return APP_RESPONSE::RECV; }
+    else if ( numbytes == 0 ) { return APP_RESPONSE::DISCONN; }
+
+    switch (re) {
+        case OK:
+            rlutil::saveDefaultColor();
+            rlutil::setColor(rlutil::GREEN);
+            std::cout << std::endl << "Appointment deleted successfully" << std::endl << std::endl;
+            rlutil::resetColor();
+            break;
+        case NOEXIST:
+            rlutil::saveDefaultColor();
+            rlutil::setColor(rlutil::RED);
+            std::cout << std::endl << "Appointment not found. Please try again" << std::endl << std::endl;
+            rlutil::resetColor();
+            break;
+        case ERR:
+            rlutil::saveDefaultColor();
+            rlutil::setColor(rlutil::RED);
+            std::cout << std::endl << "Server error. Please try again" << std::endl << std::endl;
+            rlutil::resetColor();
+            break;
+        case MAL:
+            rlutil::saveDefaultColor();
+            rlutil::setColor(rlutil::RED);
+            std::cout << std::endl << "Invalid data. Please try again" << std::endl << std::endl;
+            rlutil::resetColor();
+            break;
+        default: break;
+    }
+
     return -1;
 }
 
 int app::updateAppt() {
     user_appointments.clear();
     viewAppts();
-
-    rlutil::saveDefaultColor();
-    rlutil::setColor(rlutil::CYAN);
-    for (Appt a : user_appointments) {
-        a.operator<<(std::cout);
-    }
-    rlutil::resetColor();
 
     // send control byte
     if ((send(sockfd, &C_UPDATE_APPT_BIN, sizeof(int), 0)) == -1) {
@@ -984,43 +1110,117 @@ int app::updateAppt() {
 
     int hh, mm, MM, DD, YYYY;
     std::cout << std::endl << "Begin Time (hh:mm MM/DD/YYYY 24-hour model)" << std::endl;
-    std::cout << "hh: ";
-    std::cin >> hh;
-    std::cout << "mm: ";
-    std::cin >> mm;
-    std::cout << "MM: ";
-    std::cin >> MM;
-    std::cout << "DD: ";
-    std::cin >> DD;
-    std::cout << "YYYY: ";
-    std::cin >> YYYY;
+
+    do {
+        std::cout << "hh: ";
+        std::cin >> hh;
+    } while ( !ERRCHECKER::HOUR(hh) );
+
+    do {
+        std::cout << "mm: ";
+        std::cin >> mm;
+    } while ( !ERRCHECKER::MINUTE(mm) );
+
+    do {
+        std::cout << "MM: ";
+        std::cin >> MM;
+    } while ( !ERRCHECKER::MONTH(MM) );
+
+    do {
+        std::cout << "DD: ";
+        std::cin >> DD;
+    } while ( !ERRCHECKER::DAY(DD) );
+
+    do {
+        std::cout << "YYYY: ";
+        std::cin >> YYYY;
+    } while ( !ERRCHECKER::YEAR(YYYY) );
 
     std::string _hh, _mm, _MM, _DD, _YYYY;
     _hh = std::to_string(hh);
+    if ( hh == 0 ) {
+        _hh = "00";
+    }
+    else if ( hh < 10 ) {
+        _hh = "0" + _hh;
+    }
+
     _mm = std::to_string(mm);
+    if ( mm == 0 ) {
+        _mm = "00";
+    }
+    else if ( mm < 10 ) {
+        _mm = "0" + _hh;
+    }
+
     _MM = std::to_string(MM);
+    if ( MM < 10 ) {
+        _MM = "0" + _MM;
+    }
+
     _DD = std::to_string(DD);
+    if ( DD < 10 ) {
+        _DD = "0" + _DD;
+    }
+
     _YYYY = std::to_string(YYYY);
 
     std::string beginstr = _hh + ":" + _mm + " " + _MM + "/" + _DD + "/" + _YYYY;
 
     std::cout << std::endl << "End Time (hh:mm MM/DD/YYYY 24-hour model)" << std::endl;
-    std::cout << "hh: ";
-    std::cin >> hh;
-    std::cout << "mm: ";
-    std::cin >> mm;
-    std::cout << "MM: ";
-    std::cin >> MM;
-    std::cout << "DD: ";
-    std::cin >> DD;
-    std::cout << "YYYY: ";
-    std::cin >> YYYY;
+    do {
+        std::cout << "hh: ";
+        std::cin >> hh;
+    } while ( !ERRCHECKER::HOUR(hh) );
+
+    do {
+        std::cout << "mm: ";
+        std::cin >> mm;
+    } while ( !ERRCHECKER::MINUTE(mm) );
+
+    do {
+        std::cout << "MM: ";
+        std::cin >> MM;
+    } while ( !ERRCHECKER::MONTH(MM) );
+
+    do {
+        std::cout << "DD: ";
+        std::cin >> DD;
+    } while ( !ERRCHECKER::DAY(DD) );
+
+    do {
+        std::cout << "YYYY: ";
+        std::cin >> YYYY;
+    } while ( !ERRCHECKER::YEAR(YYYY) );
+
     std::cin.ignore();
 
     _hh = std::to_string(hh);
+    if ( hh == 0 ) {
+        _hh = "00";
+    }
+    else if ( hh < 10 ) {
+        _hh = "0" + _hh;
+    }
+
     _mm = std::to_string(mm);
+    if ( mm == 0 ) {
+        _mm = "00";
+    }
+    else if ( mm < 10 ) {
+        _mm = "0" + _hh;
+    }
+
     _MM = std::to_string(MM);
+    if ( MM < 10 ) {
+        _MM = "0" + _MM;
+    }
+
     _DD = std::to_string(DD);
+    if ( DD < 10 ) {
+        _DD = "0" + _DD;
+    }
+
     _YYYY = std::to_string(YYYY);
 
     std::string endstr = _hh + ":" + _mm + " " + _MM + "/" + _DD + "/" + _YYYY;
@@ -1080,6 +1280,50 @@ int app::updateAppt() {
         return APP_RESPONSE::SEND;
     }
 
+
+    // response values
+    // 0000 0001 (1) – OK
+    // 0000 0010 (2) - ERR
+    // 0000 0011 (3) - NOTFOUND
+    // 0000 0100 (4) – Malformed Data
+    const int OK = 0b0001;
+    const int ERR = 0b0010;
+    const int NOTFOUND = 0b0011;
+    const int MAL = 0b0100;
+
+    int re;
+    int numbytes = recv( sockfd, &re, sizeof(int), 0 );
+    if ( numbytes == -1 ) { return APP_RESPONSE::RECV; }
+    else if ( numbytes == 0 ) { return APP_RESPONSE::DISCONN; }
+
+    switch (re) {
+        case OK:
+            rlutil::saveDefaultColor();
+            rlutil::setColor(rlutil::GREEN);
+            std::cout << std::endl << "Appointment updated successfully" << std::endl;
+            rlutil::resetColor();
+            break;
+        case ERR:
+            rlutil::saveDefaultColor();
+            rlutil::setColor(rlutil::RED);
+            std::cout << std::endl << "Server error. Please try again." << std::endl;
+            rlutil::resetColor();
+            break;
+        case NOTFOUND:
+            rlutil::saveDefaultColor();
+            rlutil::setColor(rlutil::RED);
+            std::cout << std::endl << "Appointment not found. Please try again" << std::endl;
+            rlutil::resetColor();
+            break;
+        case MAL:
+            rlutil::saveDefaultColor();
+            rlutil::setColor(rlutil::RED);
+            std::cout << std::endl << "Invalid Data. Please try again" << std::endl;
+            rlutil::resetColor();
+        default: break;
+
+    }
+
     return -1;
 }
 
@@ -1091,10 +1335,10 @@ int app::getUserInfo() {
 
     int numbytes;
     int data_length;
-    char passbuf[MAX_PASSWORD_LENGTH + 1] = {0, };
-    char namebuf[MAX_NAME_LENGTH + 1] = {0, };
-    char emailbuf[MAX_EMAIL_LENGTH + 1] = {0, };
-    char phonebuf[MAX_PHONE_LENGTH + 1] = {0, };
+    char passbuf[UserData::MAX_PASSWORD_LENGTH + 1] = {0, };
+    char namebuf[UserData::MAX_NAME_LENGTH + 1] = {0, };
+    char emailbuf[UserData::MAX_EMAIL_LENGTH + 1] = {0, };
+    char phonebuf[UserData::MAX_PHONE_LENGTH + 1] = {0, };
 
     //------------------------------------------------------------------------
     // get the appt contents
@@ -1197,7 +1441,7 @@ int app::updateUserInfo() {
 
     int choice;
     do {
-                std::cout << std::endl << "Your Information. Choose an item to update." << std::endl;
+        std::cout << std::endl << "Your Information. Choose an item to update." << std::endl;
         rlutil::saveDefaultColor();
         rlutil::setColor(rlutil::CYAN);
         std::cout << userdata << std::endl;
@@ -1222,35 +1466,49 @@ int app::updateUserInfo() {
 
         int c_val;
 
-        if ( choice == 1) {
+        if ( choice == 1)
+        {
             c_val = C_UP_PASS;
-            std::cout << "New Password (8-16 characters): ";
-            getline(std::cin, pass);
-            if (ERRCHECKER::PASSWORD(pass)) {
+            do {
+                std::cout << "New Password (8-16 characters): ";
+                getline(std::cin, pass);
+            } while ( !UserData::PASSWORD(pass) );
+
+            if (UserData::PASSWORD(pass)) {
                 temp_pass = pass;
                 sender = pass;
                 for (char &c : temp_pass) { c = '*'; }
                 userdata.password = temp_pass;
+                encrypt( sender, (uint)sender.length() );
             }
         }
-        else if ( choice == 2 ) {
+        else if ( choice == 2 )
+        {
             c_val = C_UP_NAME;
-            std::cout << "New Name (Up to 50 characters): ";
-            getline(std::cin, name);
+            do {
+                std::cout << "New Name (Up to 50 characters): ";
+                getline(std::cin, name);
+            } while ( !UserData::NAME( name ) );
             userdata.name = name;
             sender = name;
         }
-        else if ( choice == 3 ) {
+        else if ( choice == 3 )
+        {
             c_val = C_UP_EMAIL;
-            std::cout << "New email (Up to 100 characters): ";
-            getline(std::cin, email);
+            do {
+                std::cout << "New email (Up to 100 characters): ";
+                getline(std::cin, email);
+            } while ( !UserData::EMAIL( email ) );
             userdata.email = email;
             sender = email;
         }
-        else if ( choice == 4 ) {
+        else if ( choice == 4 )
+        {
             c_val = C_UP_PHONE;
-            std::cout << "New Phone (###-###-####): ";
-            getline(std::cin, phone);
+            do {
+                std::cout << "New Phone (###-###-####): ";
+                getline(std::cin, phone);
+            } while ( !UserData::PHONE( phone ) );
             userdata.phone = phone;
             sender = phone;
         }
@@ -1268,12 +1526,54 @@ int app::updateUserInfo() {
             return APP_RESPONSE::SEND;
         }
 
+        // response values
+        // 0000 0001 (1) – OK
+        // 0000 0010 (2) - ERR
+        // 0000 0011 (3) – NOEXIST
+        // 0000 0100 (4) - MALFORMED DATA
+        const int OK = 0b0001;
+        const int ERR = 0b0010;
+        const int MAL = 0b0011;
+
+        int re;
+        int numbytes = recv( sockfd, &re, sizeof(int), 0 );
+        if ( numbytes == -1 ) { return APP_RESPONSE::RECV; }
+        else if ( numbytes == 0 ) { return APP_RESPONSE::DISCONN; }
+
+        switch (re) {
+            case OK:
+                rlutil::saveDefaultColor();
+                rlutil::setColor(rlutil::GREEN);
+                std::cout << std::endl << "Information updated." << std::endl << std::endl;
+                rlutil::resetColor();
+                break;
+            case ERR:
+                rlutil::saveDefaultColor();
+                rlutil::setColor(rlutil::RED);
+                std::cout << std::endl << "Server error. Please try again" << std::endl << std::endl;
+                rlutil::resetColor();
+                break;
+            case MAL:
+                rlutil::saveDefaultColor();
+                rlutil::setColor(rlutil::RED);
+                std::cout << std::endl << "Invalid data. Please try again" << std::endl << std::endl;
+                rlutil::resetColor();
+                break;
+            default: break;
+        }
+
     } while ( choice != 5 );
 
     return -1;
 }
 
 void app::encrypt(char s[], uint len ) {
+    for ( int i = 0; i < len; ++i ) {
+        s[i] = s[i] + 13;
+    }
+}
+
+void app::encrypt(std::string& s, uint len ) {
     for ( int i = 0; i < len; ++i ) {
         s[i] = s[i] + 13;
     }
