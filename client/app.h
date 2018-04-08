@@ -16,7 +16,9 @@
 #include <limits>
 #include <errno.h>
 #include <vector>
+#include <algorithm>
 #include "Appt.h"
+#include "UserData.h"
 #include "APP_PROTOCOL.h"
 #include "rlutil.h"
 
@@ -43,9 +45,13 @@ private:
     int login();
     int addUser();
     int viewAppts();
+    int viewApptsByTime();
+    int viewApptsByRange();
     int addAppt();
     int delAppt();
     int updateAppt();
+    int getUserInfo();
+    int updateUserInfo();
 
     struct appt {
         int appt_id;
@@ -55,6 +61,7 @@ private:
         std::string content;
     };
     std::vector<Appt> user_appointments;
+    UserData userdata;
     void encrypt(char s[], uint len );
     int sockfd;
 };

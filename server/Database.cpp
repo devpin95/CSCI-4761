@@ -277,3 +277,46 @@ int Database::updateAppt(const int& id,const std::string& begin, const std::stri
 
     return 0;
 }
+
+int Database::getUserData( UserData& u ) {
+
+    std::string dir = user_dir_path + "/" + f_user;
+    user_dir.open(dir);
+
+    if ( user_dir ) {
+        std::string password, name, email, phone;
+        getline( user_dir, password);
+        getline(user_dir, name);
+        getline(user_dir, email);
+        getline(user_dir, phone);
+
+        //for ( char& c : password ) { c = '*'; }
+
+        u.password = password;
+        u.name = name;
+        u.email = email;
+        u.phone = phone;
+
+        user_dir.close();
+    } else {
+        std::cout << "Failed to open " << dir << std::endl;
+        return -1;
+    }
+
+    return 0;
+}
+
+int Database::updateUserData( UserData& u ) {
+    std::string dir = user_dir_path + "/" + f_user;
+    user_dir.open(dir);
+
+    if ( user_dir ) {
+        user_dir << u;
+        user_dir.close();
+    } else {
+        std::cout << "Failed to open " << dir << std::endl;
+        return -1;
+    }
+
+    return 0;
+}

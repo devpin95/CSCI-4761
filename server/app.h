@@ -44,6 +44,7 @@ public:
 private:
     int sockfd, new_fd;
     std::vector<Appt> user_appointments;
+    UserData userdata;
     Database db;
     struct sockaddr_in their_addr; // connector's address information
     int addUser();
@@ -53,6 +54,7 @@ private:
     int delAppt();
     int updateAppt();
     int getUserData();
+    int updateUserData();
     //int checkIfUserExists(const std::string& uname);
 };
 

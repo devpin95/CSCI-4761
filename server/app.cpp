@@ -132,6 +132,24 @@ int app::start( std::string &msg ) {
                         return resp;
                     }
                 }
+                else if ( cont == C_GET_USER_DATA_BIN )
+                {
+                    fprintf(stderr, "Calling getUserData()\n" );
+                    fflush(stderr);
+                    int resp = getUserData();
+                    if ( resp != -1 ) {
+                        return resp;
+                    }
+                }
+                else if ( cont == C_UPDATE_USER_DATA_BIN )
+                {
+                    fprintf(stderr, "Calling updateUserData()\n" );
+                    fflush(stderr);
+                    int resp = updateUserData();
+                    if ( resp != -1 ) {
+                        return resp;
+                    }
+                }
             }
             return APP_RESPONSE::OK;
         //}
@@ -494,5 +512,173 @@ int app::updateAppt() {
 }
 
 int app::getUserData() {
+    UserData userdata;
+    if ( db.getUserData( userdata ) == -1 ) {
+        // return error
+    }
 
+    int numbytes;
+
+    // send the size
+    for ( char& c : userdata.password ) { c = '*'; }
+    int s = userdata.password.length() + 1;
+    if ( ( numbytes = send( new_fd, &s, sizeof(int), 0 ) ) == -1 ) {
+        assert(numbytes == sizeof(int));
+        return APP_RESPONSE::SEND;
+    }
+    // send the password
+    if ( ( numbytes = send( new_fd, userdata.password.c_str(), s, 0 ) ) == -1 ) {
+        assert(numbytes == s);
+        return APP_RESPONSE::SEND;
+    }
+
+    // send the size
+    s = userdata.name.length() + 1;
+    if ( ( numbytes = send( new_fd, &s, sizeof(int), 0 ) ) == -1 ) {
+        assert(numbytes == sizeof(int));
+        return APP_RESPONSE::SEND;
+    }
+    // send the name
+    if ( ( numbytes = send( new_fd, userdata.name.c_str(), s, 0 ) ) == -1 ) {
+        assert(numbytes == s);
+        return APP_RESPONSE::SEND;
+    }
+
+    // send the size
+    s = userdata.email.length() + 1;
+    if ( ( numbytes = send( new_fd, &s, sizeof(int), 0 ) ) == -1 ) {
+        assert(numbytes == sizeof(int));
+        return APP_RESPONSE::SEND;
+    }
+    // send the email
+    if ( ( numbytes = send( new_fd, userdata.email.c_str(), s, 0 ) ) == -1 ) {
+        assert(numbytes == s);
+        return APP_RESPONSE::SEND;
+    }
+
+    // send the size
+    s = userdata.phone.length() + 1;
+    if ( ( numbytes = send( new_fd, &s, sizeof(int), 0 ) ) == -1 ) {
+        assert(numbytes == sizeof(int));
+        return APP_RESPONSE::SEND;
+    }
+    // send the phone
+    if ( ( numbytes = send( new_fd, userdata.phone.c_str(), s, 0 ) ) == -1 ) {
+        assert(numbytes == s);
+        return APP_RESPONSE::SEND;
+    }
+
+    return -1;
+}
+
+int app::updateUserData() {
+
+    db.getUserData(userdata);
+
+    // SEC control
+    const int C_UP_PASS = 0b0001;
+    const int C_UP_NAME = 0b0010;
+    const int C_UP_EMAIL = 0b0011;
+    const int C_UP_PHONE = 0b0100;
+
+    int sec_control;
+    int numbytes = recv( new_fd, &sec_control, sizeof(int), 0 );
+    if ( numbytes == -1 ) { return APP_RESPONSE::RECV; }
+    else if ( numbytes == 0 ) { return APP_RESPONSE::OK; }
+
+    int data_length;
+    char passbuf[MAX_PASSWORD_LENGTH+1] = {0, };
+    char namebuf[MAX_NAME_LENGTH+1] = {0, };
+    char emailbuf[MAX_EMAIL_LENGTH+1] = {0, };
+    char phonebuf[MAX_PHONE_LENGTH+1] = {0, };
+
+    switch ( sec_control ) {
+        case C_UP_PASS:
+            //------------------------------------------------------------------------
+            // get the appt begin
+            numbytes = recv( new_fd, &data_length, sizeof(int), 0 );
+            if ( numbytes == -1 ) { return APP_RESPONSE::RECV; }
+            else if ( numbytes == 0 ) {
+                return APP_RESPONSE::OK;
+            }
+            assert(numbytes==sizeof(int));
+
+            numbytes = recv( new_fd, passbuf, data_length, 0 );
+            if ( numbytes == -1 ) { return APP_RESPONSE::RECV; }
+            else if ( numbytes == 0 ) {
+                return APP_RESPONSE::OK;
+            }
+            assert(numbytes==data_length);
+            //------------------------------------------------------------------------
+
+            userdata.password = passbuf;
+
+            break;
+        case C_UP_NAME:
+            //------------------------------------------------------------------------
+            // get the appt begin
+            numbytes = recv( new_fd, &data_length, sizeof(int), 0 );
+            if ( numbytes == -1 ) { return APP_RESPONSE::RECV; }
+            else if ( numbytes == 0 ) {
+                return APP_RESPONSE::OK;
+            }
+            assert(numbytes==sizeof(int));
+
+            numbytes = recv( new_fd, namebuf, data_length, 0 );
+            if ( numbytes == -1 ) { return APP_RESPONSE::RECV; }
+            else if ( numbytes == 0 ) {
+                return APP_RESPONSE::OK;
+            }
+            assert(numbytes==data_length);
+            //------------------------------------------------------------------------
+
+            userdata.name = namebuf;
+            break;
+        case C_UP_EMAIL:
+            //------------------------------------------------------------------------
+            // get the appt begin
+            numbytes = recv( new_fd, &data_length, sizeof(int), 0 );
+            if ( numbytes == -1 ) { return APP_RESPONSE::RECV; }
+            else if ( numbytes == 0 ) {
+                return APP_RESPONSE::OK;
+            }
+            assert(numbytes==sizeof(int));
+
+            numbytes = recv( new_fd, emailbuf, data_length, 0 );
+            if ( numbytes == -1 ) { return APP_RESPONSE::RECV; }
+            else if ( numbytes == 0 ) {
+                return APP_RESPONSE::OK;
+            }
+            assert(numbytes==data_length);
+            //------------------------------------------------------------------------
+
+            userdata.email = emailbuf;
+            break;
+        case C_UP_PHONE:
+            //------------------------------------------------------------------------
+            // get the appt begin
+            numbytes = recv( new_fd, &data_length, sizeof(int), 0 );
+            if ( numbytes == -1 ) { return APP_RESPONSE::RECV; }
+            else if ( numbytes == 0 ) {
+                return APP_RESPONSE::OK;
+            }
+            assert(numbytes==sizeof(int));
+
+            numbytes = recv( new_fd, phonebuf, data_length, 0 );
+            if ( numbytes == -1 ) { return APP_RESPONSE::RECV; }
+            else if ( numbytes == 0 ) {
+                return APP_RESPONSE::OK;
+            }
+            assert(numbytes==data_length);
+            //------------------------------------------------------------------------
+
+            userdata.phone = phonebuf;
+            break;
+        default:
+            break;
+    }
+
+    db.updateUserData( userdata );
+
+    return -1;
 }

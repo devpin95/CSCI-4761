@@ -3,4 +3,4 @@ project(client)
 
 set(CMAKE_CXX_STANDARD 11)
 
-add_executable(client main.cpp app.cpp app.h APP_PROTOCOL.h Appt.h)
+add_executable(client main.cpp app.cpp app.h APP_PROTOCOL.h Appt.h UserData.cpp UserData.h)
