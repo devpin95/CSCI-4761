@@ -27,7 +27,7 @@ int Database::addUser( const std::string& uname, const std::string& pass ) {
 int Database::login(const std::string &uname, const std::string &pass) {
     int stat = 0;
     std::string file_pass;
-    std::string dir = DB_DIRNAME + uname + "\\" + f_user;
+    std::string dir = DB_DIRNAME + uname + "/" + f_user;
     user_dir.open(dir);
 
     if ( user_dir ) {
@@ -35,12 +35,14 @@ int Database::login(const std::string &uname, const std::string &pass) {
         user_dir.close();
 
         if ( pass != file_pass ) {
+            std::cout << "Passwords dont match" << std::endl;
             stat = -1;
         } else {
-            user_dir_path = DB_DIRNAME + uname + "\\";
+            user_dir_path = DB_DIRNAME + uname + "/";
             logged_in = true;
         }
     } else {
+        std::cout << "Failed to open " << dir << std::endl;
         stat = -1;
     }
 
@@ -56,7 +58,7 @@ int Database::getAppts(std::vector<Appt> &a) {
 
     //rlutil::saveDefaultColor();
     //rlutil::setColor(rlutil::YELLOW);
-    user_dir.open( user_dir_path  + "\\" + f_appointments, std::ios::in );
+    user_dir.open( user_dir_path  + "/" + f_appointments, std::ios::in );
     //rlutil::resetColor();
 
     if ( user_dir ) {
@@ -98,10 +100,10 @@ int Database::addAppt( const std::string& begin, const std::string& end, const s
 
     //rlutil::saveDefaultColor();
     //rlutil::setColor(rlutil::YELLOW);
-    std::cout << user_dir_path << "\\" << f_appointments;
+    std::cout << user_dir_path << "/" << f_appointments;
     //rlutil::resetColor();
 
-    user_dir.open( user_dir_path  + "\\" + f_appointments, std::ios::in );
+    user_dir.open( user_dir_path  + "/" + f_appointments, std::ios::in );
 
     if ( user_dir ) {
         while ( getline( user_dir, ID) ) {
@@ -133,13 +135,12 @@ int Database::addAppt( const std::string& begin, const std::string& end, const s
         new_appt.contents = contents;
 
         temp_appts.push_back( new_appt );
-
     }
     else {
         return -1;
     }
 
-    user_dir.open( user_dir_path  + "\\" + f_appointments, std::ios::out | std::ios::trunc );
+    user_dir.open( user_dir_path  + "/" + f_appointments, std::ios::out | std::ios::trunc );
 
     if ( user_dir ) {
         for ( Appt& a : temp_appts ) {
@@ -164,7 +165,7 @@ int Database::delAppt(const int& id) {
     std::string ID, b, e, p, c;
     std::vector<Appt> temp_appts;
 
-    user_dir.open( user_dir_path  + "\\" + f_appointments, std::ios::in );
+    user_dir.open( user_dir_path  + "/" + f_appointments, std::ios::in );
 
     if ( user_dir ) {
         while ( getline( user_dir, ID) ) {
@@ -195,7 +196,7 @@ int Database::delAppt(const int& id) {
             }
         }
 
-        user_dir.open( user_dir_path  + "\\" + f_appointments, std::ios::out | std::ios::trunc );
+        user_dir.open( user_dir_path  + "/" + f_appointments, std::ios::out | std::ios::trunc );
         if ( user_dir ) {
             for ( Appt& a : temp_appts ) {
                 user_dir << a;
@@ -221,7 +222,7 @@ int Database::updateAppt(const int& id,const std::string& begin, const std::stri
     std::string ID, b, e, p, c;
     std::vector<Appt> temp_appts;
 
-    user_dir.open( user_dir_path  + "\\" + f_appointments, std::ios::in );
+    user_dir.open( user_dir_path  + "/" + f_appointments, std::ios::in );
 
     if ( user_dir ) {
         while ( getline( user_dir, ID) ) {
@@ -259,7 +260,7 @@ int Database::updateAppt(const int& id,const std::string& begin, const std::stri
             return 1;
         }
 
-        user_dir.open( user_dir_path  + "\\" + f_appointments, std::ios::out | std::ios::trunc );
+        user_dir.open( user_dir_path  + "/" + f_appointments, std::ios::out | std::ios::trunc );
         if ( user_dir ) {
             for ( Appt& a : temp_appts ) {
                 user_dir << a;

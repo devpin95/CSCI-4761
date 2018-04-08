@@ -252,6 +252,7 @@ int app::login() {
     control = std::to_string( OK );
     if ( ERRCHECKER::USERNAME( unamebuf ) && ERRCHECKER::PASSWORD( passbuf ) )
     {
+        std::cout << "LOGGING IN" << std::endl;
         int ex = db.login( unamebuf, passbuf );
         int e = errno;
         if ( ex == -1 ) {
@@ -312,7 +313,7 @@ int app::getAppts() {
                 assert(numbytes == s);
                 return APP_RESPONSE::SEND;
             }
-            std::cout << i << "-" << user_appointments[i].begin << std::endl;
+            //std::cout << i << "-" << user_appointments[i].begin << std::endl;
 
             // ----------------------------------------------------------------------------------------------------------------------
             // send the size
@@ -327,7 +328,7 @@ int app::getAppts() {
                 assert(numbytes == s);
                 return APP_RESPONSE::SEND;
             }
-            std::cout << i << "-" << user_appointments[i].end << std::endl;
+            //std::cout << i << "-" << user_appointments[i].end << std::endl;
 
             // ----------------------------------------------------------------------------------------------------------------------
             // send the size
@@ -342,7 +343,7 @@ int app::getAppts() {
                 assert(numbytes == s);
                 return APP_RESPONSE::SEND;
             }
-            std::cout << i << "-" << user_appointments[i].place << std::endl;
+            //std::cout << i << "-" << user_appointments[i].place << std::endl;
 
             // ----------------------------------------------------------------------------------------------------------------------
             // send the size
@@ -357,7 +358,7 @@ int app::getAppts() {
                 assert(numbytes == s);
                 return APP_RESPONSE::SEND;
             }
-            std::cout << i << "-" << user_appointments[i].contents << std::endl;
+            //std::cout << i << "-" << user_appointments[i].contents << std::endl;
         }
     }
     return -1;
@@ -490,4 +491,8 @@ int app::updateAppt() {
         return -1;
     }
     return -1;
+}
+
+int app::getUserData() {
+
 }

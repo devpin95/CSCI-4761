@@ -20,6 +20,7 @@ static const int C_GET_USER_APPTS_BIN = 0b0011;
 static const int C_ADD_APPT_BIN = 0b0100;
 static const int C_DEL_APPT_BIN = 0b0101;
 static const int C_UPDATE_APPT_BIN = 0b0110;
+static const int C_GET_USER_DATA_BIN = 0b0111;
 
 // Control Values (std::string)
 static const std::string C_DISCONN = std::to_string(C_DISCONN_BIN);

@@ -21,7 +21,7 @@ public:
 private:
     const std::string f_user = "user";  // stores user information
     const std::string f_appointments = "appointments";  // stores user appointements
-    const std::string DB_DIRNAME = "C:\\Users\\devpin\\Documents\\School\\ComputerNetworks\\CSCI-4761\\server\\db\\";
+    const std::string DB_DIRNAME = "db/";
     std::string user_dir_path = DB_DIRNAME;
     int logged_in = false;
     std::fstream user_dir;

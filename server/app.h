@@ -52,6 +52,7 @@ private:
     int addAppt();
     int delAppt();
     int updateAppt();
+    int getUserData();
     //int checkIfUserExists(const std::string& uname);
 };
 

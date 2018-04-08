@@ -2,10 +2,6 @@
 #include "app.h"
 
 int app::start(std::string &msg, int argc, char *argv[]) {
-    int numbytes;
-    char buf[MAXDATASIZE];
-    char stringbuf[MAXDATASIZE];
-    char controlbuf[MAXCONTROLSIZE];
     struct hostent *he;
     struct sockaddr_in their_addr; // connector's address information
 
