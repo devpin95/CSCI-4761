@@ -1,3 +1,4 @@
+#include <assert.h>
 #include "app.h"
 //void app::app( ) {
 //    // constructor
@@ -57,35 +58,37 @@ int app::start( std::string &msg ) {
             recvbuf = (char *) calloc(128,sizeof(char));
 
             for(;;) {
-                bzero(recvbuf, sizeof(recvbuf));
-                numbytes=recv(new_fd, recvbuf, MAXCONTROLSIZE, 0);
+                int cont;
+                numbytes=recv(new_fd, &cont, sizeof(int), 0);
 
                 if (numbytes == -1) {
                     int e = errno;
-                    std::cout << "errno -> " << e;
+                    std::cout << "errno -> " << e << std::endl;
                     fprintf(stderr, "(1) numbytes = %d\n", numbytes);
+                    fflush(stderr);
                     return APP_RESPONSE::RECV;
                 }
                 else if ( numbytes==0 ) {
                     break;
                 }
 
-                printf("numbytes: %d\n", numbytes);
+                //printf("numbytes: %d\n", numbytes);
 
                 //..... Do stuff
-                if ( atoi( &recvbuf[0] ) == C_DISCONN_BIN )
+                if ( cont == C_DISCONN_BIN )
                 {
                     fprintf(stderr, "User disconnecting\n" );
                     return APP_RESPONSE::OK;
                 }
-                else if ( atoi( &recvbuf[0] ) == C_ADD_USER_BIN ) {
+                else if ( cont == C_ADD_USER_BIN ) {
                     fprintf(stderr, "Calling addUser()\n" );
+                    fflush(stderr);
                     int resp = addUser();
                     if ( resp != -1 ) {
                         return resp;
                     }
                 }
-                else if ( atoi( &recvbuf[0] ) == C_LOGIN_BIN )
+                else if ( cont == C_LOGIN_BIN )
                 {
                     fprintf(stderr, "Calling login()\n" );
                     int resp = login();
@@ -93,33 +96,43 @@ int app::start( std::string &msg ) {
                         return resp;
                     }
                 }
-                else if ( atoi( &recvbuf[0] ) == C_GET_USER_APPTS_BIN )
+                else if ( cont == C_GET_USER_APPTS_BIN )
                 {
                     fprintf(stderr, "Calling getAppts()\n" );
+                    fflush(stderr);
                     int resp = getAppts();
                     if ( resp != -1 ) {
                         return resp;
                     }
                 }
-                else if ( atoi( &recvbuf[0] ) == C_ADD_APPT_BIN )
+                else if ( cont == C_ADD_APPT_BIN )
                 {
                     fprintf(stderr, "Calling addAppt()\n" );
+                    fflush(stderr);
                     int resp = addAppt();
                     if ( resp != -1 ) {
                         return resp;
                     }
                 }
-                else if ( atoi( &recvbuf[0] ) == C_DEL_APPT_BIN )
+                else if ( cont == C_DEL_APPT_BIN )
                 {
                     fprintf(stderr, "Calling delAppt()\n" );
+                    fflush(stderr);
                     int resp = delAppt();
                     if ( resp != -1 ) {
                         return resp;
                     }
                 }
+                else if ( cont == C_UPDATE_APPT_BIN )
+                {
+                    fprintf(stderr, "Calling updateAppt()\n" );
+                    fflush(stderr);
+                    int resp = updateAppt();
+                    if ( resp != -1 ) {
+                        return resp;
+                    }
+                }
             }
-
-            free(recvbuf);
             return APP_RESPONSE::OK;
         //}
     }
@@ -270,13 +283,16 @@ int app::login() {
 int app::getAppts() {
     user_appointments.clear();
     int size = db.getAppts( user_appointments );
+    int numbytes;
 
     if ( size != -1 ) {
         // send the number of appointments
-        if ( ( send( new_fd, std::to_string(size).c_str(), strlen( std::to_string(size).c_str() ), 0 ) ) == -1 )
+        if ( ( send( new_fd, &size, sizeof(int), 0 ) ) == -1 )
         {
             return APP_RESPONSE::SEND;
         }
+        std::cout << std::endl << std::endl;
+        std::cout << "Num elements: " << std::to_string(size) << std::endl;
 
         for ( int i = 0; i < size; ++i) {
             if ( ( send( new_fd, &user_appointments[i].ID, sizeof(int), 0 ) ) == -1 ) {
@@ -285,43 +301,63 @@ int app::getAppts() {
 
             // ----------------------------------------------------------------------------------------------------------------------
             // send the size
-            if ( ( send( new_fd, std::to_string(user_appointments[i].begin.length() + 1).c_str(), MAXCONTROLSIZE_DATA, 0 ) ) == -1 ) {
+            //uint32_t s = htonl( user_appointments[i].begin.length() + 1);
+            int s = user_appointments[i].begin.length() + 1;
+            if ( ( numbytes = send( new_fd, &s, sizeof(int), 0 ) ) == -1 ) {
+                assert(numbytes == MAXCONTROLSIZE_DATA);
                 return APP_RESPONSE::SEND;
             }
             // send the string
-            if ( ( send( new_fd, user_appointments[i].begin.c_str(), user_appointments[i].begin.length() + 1, 0 ) ) == -1 ) {
+            if ( ( numbytes = send( new_fd, user_appointments[i].begin.c_str(), s, 0 ) ) == -1 ) {
+                assert(numbytes == s);
                 return APP_RESPONSE::SEND;
             }
+            std::cout << i << "-" << user_appointments[i].begin << std::endl;
 
             // ----------------------------------------------------------------------------------------------------------------------
             // send the size
-            if ( ( send( new_fd, std::to_string(user_appointments[i].end.length() + 1).c_str(), MAXCONTROLSIZE_DATA, 0 ) ) == -1 ) {
+            //s = htonl(user_appointments[i].end.length() + 1);
+            s = user_appointments[i].end.length() + 1;
+            if ( ( numbytes = send( new_fd, &s, sizeof(int), 0 ) ) == -1 ) {
+                assert(numbytes == sizeof(int));
                 return APP_RESPONSE::SEND;
             }
             // send the string
-            if ( ( send( new_fd, user_appointments[i].end.c_str(), user_appointments[i].end.length() + 1, 0 ) ) == -1 ) {
+            if ( ( numbytes = send( new_fd, user_appointments[i].end.c_str(), s, 0 ) ) == -1 ) {
+                assert(numbytes == s);
                 return APP_RESPONSE::SEND;
             }
+            std::cout << i << "-" << user_appointments[i].end << std::endl;
 
             // ----------------------------------------------------------------------------------------------------------------------
             // send the size
-            if ( ( send( new_fd, std::to_string(user_appointments[i].place.length() + 1).c_str(), MAXCONTROLSIZE_DATA, 0 ) ) == -1 ) {
+            //s = htonl(user_appointments[i].place.length() + 1);
+            s = user_appointments[i].place.length() + 1;
+            if ( ( numbytes = send( new_fd, &s, sizeof(int), 0 ) ) == -1 ) {
+                assert(numbytes == sizeof(int));
                 return APP_RESPONSE::SEND;
             }
             // send the string
-            if ( ( send( new_fd, user_appointments[i].place.c_str(), user_appointments[i].place.length() + 1, 0 ) ) == -1 ) {
+            if ( ( numbytes = send( new_fd, user_appointments[i].place.c_str(), s, 0 ) ) == -1 ) {
+                assert(numbytes == s);
                 return APP_RESPONSE::SEND;
             }
+            std::cout << i << "-" << user_appointments[i].place << std::endl;
 
             // ----------------------------------------------------------------------------------------------------------------------
             // send the size
-            if ( ( send( new_fd, std::to_string(user_appointments[i].contents.length() + 1).c_str(), MAXCONTROLSIZE_DATA, 0 ) ) == -1 ) {
+            //s = htonl(user_appointments[i].contents.length() + 1);
+            s = user_appointments[i].contents.length() + 1;
+            if ( ( numbytes = send( new_fd, &s, sizeof(int), 0 ) ) == -1 ) {
+                assert(numbytes == sizeof(int));
                 return APP_RESPONSE::SEND;
             }
             // send the string
-            if ( ( send( new_fd, user_appointments[i].contents.c_str(), user_appointments[i].contents.length() + 1, 0 ) ) == -1 ) {
+            if ( ( numbytes = send( new_fd, user_appointments[i].contents.c_str(), s, 0 ) ) == -1 ) {
+                assert(numbytes == s);
                 return APP_RESPONSE::SEND;
             }
+            std::cout << i << "-" << user_appointments[i].contents << std::endl;
         }
     }
     return -1;
@@ -388,8 +424,69 @@ int app::addAppt() {
 
 int app::delAppt() {
     int id;
+
     int numbytes = recv( new_fd, &id, sizeof(int), 0 );
+    if ( numbytes == -1 ) { return APP_RESPONSE::RECV; }
+    else if ( numbytes == 0 ) { return APP_RESPONSE::OK; }
+
     if ( db.delAppt( id ) != -1 ){
+        return -1;
+    }
+    return -1;
+}
+
+int app::updateAppt() {
+    int id;
+    int numbytes = recv( new_fd, &id, sizeof(int), 0 );
+    if ( numbytes == -1 ) { return APP_RESPONSE::RECV; }
+    else if ( numbytes == 0 ) { return APP_RESPONSE::OK; }
+
+    char beginbuf[APPT_BEGIN_END_LENGTH + 1] = {0, };
+    char endbuf[APPT_BEGIN_END_LENGTH + 1] = {0, };
+    char placebuf[APPT_PLACE_LENGTH + 1] = {0, };
+    char contentsbuf[APPT_CONTENTS_LENGTH + 1] = {0, };
+
+    //------------------------------------------------------------------------
+    // get the appt begin
+    char data_length_buf[32] = {0, };
+    numbytes = recv( new_fd, data_length_buf, MAXCONTROLSIZE_DATA, 0 );
+    if ( numbytes == -1 ) { return APP_RESPONSE::RECV; }
+    else if ( numbytes == 0 ) { return APP_RESPONSE::OK; }
+    numbytes = recv( new_fd, beginbuf, atoi(data_length_buf), 0 );
+    if ( numbytes == -1 ) return APP_RESPONSE::RECV;
+    else if ( numbytes == 0 ) return APP_RESPONSE::OK;
+
+    //------------------------------------------------------------------------
+    // get the appt end
+    bzero(data_length_buf, 0);
+    numbytes = recv( new_fd, data_length_buf, MAXCONTROLSIZE_DATA, 0 );
+    if ( numbytes == -1 ) { return APP_RESPONSE::RECV; }
+    else if ( numbytes == 0 ) { return APP_RESPONSE::OK; }
+    numbytes = recv( new_fd, endbuf, atoi(data_length_buf), 0 );
+    if ( numbytes == -1 ) return APP_RESPONSE::RECV;
+    else if ( numbytes == 0 ) return APP_RESPONSE::OK;
+
+    //------------------------------------------------------------------------
+    // get the appt place
+    bzero(data_length_buf, 0);
+    numbytes = recv( new_fd, data_length_buf, MAXCONTROLSIZE_DATA, 0 );
+    if ( numbytes == -1 ) { return APP_RESPONSE::RECV; }
+    else if ( numbytes == 0 ) { return APP_RESPONSE::OK; }
+    numbytes = recv( new_fd, placebuf, atoi(data_length_buf), 0 );
+    if ( numbytes == -1 ) return APP_RESPONSE::RECV;
+    else if ( numbytes == 0 ) return APP_RESPONSE::OK;
+
+    //------------------------------------------------------------------------
+    // get the appt contents
+    bzero(data_length_buf, 0);
+    numbytes = recv( new_fd, data_length_buf, MAXCONTROLSIZE_DATA, 0 );
+    if ( numbytes == -1 ) { return APP_RESPONSE::RECV; }
+    else if ( numbytes == 0 ) { return APP_RESPONSE::OK; }
+    numbytes = recv( new_fd, contentsbuf, atoi(data_length_buf), 0 );
+    if ( numbytes == -1 ) return APP_RESPONSE::RECV;
+    else if ( numbytes == 0 ) return APP_RESPONSE::OK;
+
+    if ( db.updateAppt( id, beginbuf, endbuf, placebuf, contentsbuf ) != -1 ){
         return -1;
     }
     return -1;

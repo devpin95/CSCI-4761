@@ -1,3 +1,4 @@
+#include <assert.h>
 #include "app.h"
 
 int app::start(std::string &msg, int argc, char *argv[]) {
@@ -66,14 +67,21 @@ int app::start(std::string &msg, int argc, char *argv[]) {
                             // check if the user has any appointments
                             if ( !user_appointments.empty() ) {
                                 // print out the appointments
+                                std::cout << std::endl << "Your schedule" << std::endl;
+                                rlutil::saveDefaultColor();
+                                rlutil::setColor(rlutil::CYAN);
                                 for (Appt a : user_appointments) {
                                     //std::cout << user_appointments[i];
                                     a.operator<<(std::cout);
                                 }
+                                rlutil::resetColor();
                             }
                             else {
                                 // the user doesn't have any appointments
-                                std::cout << "No Appointments Scheduled" << std::endl;
+                                rlutil::saveDefaultColor();
+                                rlutil::setColor(rlutil::RED);
+                                std::cout << std::endl << "No Appointments Scheduled" << std::endl << std::endl;
+                                rlutil::resetColor();
                             }
                             break;
                         case 2:
@@ -91,6 +99,11 @@ int app::start(std::string &msg, int argc, char *argv[]) {
                             }
                             break;
                         case 4:
+                            resp = updateAppt();
+                            // check if the request was successful
+                            if ( resp != -1 ) {
+                                return resp;
+                            }
                             break;
                         default: break;
                     }
@@ -124,16 +137,12 @@ int app::login() {
     const int UNAME_USED = 0b0011;
     const int MAL_DATA = 0b0100;
 
-    const char* control;
     char servresp[1] = {0};
     char unamebuf[MAX_USERNAME_LENGTH] = {'\0', };
     char passbuf[MAX_PASSWORD_LENGTH] = {'\0', };
-    control = C_LOGIN.c_str();
 
     //send control byte
-    if ((send(sockfd, control, /* sizeof(char) * strlen(control) */ MAXCONTROLSIZE, 0)) == -1) {
-        int e = errno;
-        std::cout << "errno -> " << e;
+    if ((send(sockfd, &C_LOGIN_BIN, sizeof(int), 0)) == -1) {
         return APP_RESPONSE::SEND;
     }
 
@@ -150,7 +159,10 @@ int app::login() {
         if ( ERRCHECKER::USERNAME(unamebuf) ) {
             break;
         } else {
+            rlutil::saveDefaultColor();
+            rlutil::setColor(rlutil::RED);
             std::cout << unamebuf << " is not a valid username" << std::endl;
+            rlutil::resetColor();
         }
     }
 
@@ -165,54 +177,55 @@ int app::login() {
         if ( ERRCHECKER::PASSWORD(passbuf) ) {
             break;
         } else {
+            rlutil::saveDefaultColor();
+            rlutil::setColor(rlutil::RED);
             std::cout << "Invalid password" << std::endl;
+            rlutil::resetColor();
         }
     }
 
     encrypt( passbuf, (uint)strlen(passbuf) );
-
-    if ((send(sockfd, unamebuf, MAX_USERNAME_LENGTH, 0)) == -1) {
-        int e = errno;
-        std::cout << "errno -> " << e;
-        return APP_RESPONSE::SEND;
-    }
-
-    if ((send(sockfd, passbuf, MAX_PASSWORD_LENGTH, 0)) == -1) {
-        int e = errno;
-        std::cout << "errno -> " << e;
-        return APP_RESPONSE::SEND;
-    }
+    // send the username
+    if ((send(sockfd, unamebuf, MAX_USERNAME_LENGTH, 0)) == -1) { return APP_RESPONSE::SEND; }
+    // send the password
+    if ((send(sockfd, passbuf, MAX_PASSWORD_LENGTH, 0)) == -1) { return APP_RESPONSE::SEND; }
 
     int numbytes = recv( sockfd, servresp, MAXCONTROLSIZE, 0 );
     int onrre = errno;
 
-    if ( numbytes == -1 ) {
-        perror("recv");
-        int e = errno;
-        std::cout << "(1) errno -> " << e << std::endl;
-        return APP_RESPONSE::RECV;
-    }
-    else if ( numbytes == 0 ) {
-        int e = errno;
-        std::cout << "(2) errno -> " << e;
-        return APP_RESPONSE::DISCONN;
-    }
+    if ( numbytes == -1 ) { return APP_RESPONSE::RECV; }
+    else if ( numbytes == 0 ) { return APP_RESPONSE::DISCONN; }
 
     switch ( atoi( servresp ) ) {
         case OK:
+            rlutil::saveDefaultColor();
+            rlutil::setColor(rlutil::GREEN);
             std::cout << std::endl << "Logged in successfully" << std::endl << std::endl;
+            rlutil::resetColor();
             return -1;
         case ERR:
+            rlutil::saveDefaultColor();
+            rlutil::setColor(rlutil::RED);
             std::cout << std::endl << "Server Error. Try Again." << std::endl << std::endl;
+            rlutil::resetColor();
             break;
         case UNAME_USED:
+            rlutil::saveDefaultColor();
+            rlutil::setColor(rlutil::RED);
             std::cout << "That username is already taken. Try a different name." << std::endl;
+            rlutil::resetColor();
             break;
         case MAL_DATA:
+            rlutil::saveDefaultColor();
+            rlutil::setColor(rlutil::RED);
             std::cout << "Username or password are not valid. Try again." << std::endl;
+            rlutil::resetColor();
             break;
         default:
+            rlutil::saveDefaultColor();
+            rlutil::setColor(rlutil::RED);
             std::cout << "Something went wrong" << std::endl;
+            rlutil::resetColor();
             break;
     }
     return -2;
@@ -229,14 +242,12 @@ int app::addUser() {
     const int UNAME_USED = 0b0011;
     const int MAL_DATA = 0b0100;
 
-    const char* control;
     char servresp[1] = {0};
     char unamebuf[MAX_USERNAME_LENGTH] = {'\0', };
     char passbuf[MAX_PASSWORD_LENGTH] = {'\0', };
-    control = C_ADD_USER.c_str();
 
     //send control byte
-    if ((send(sockfd, control, /* sizeof(char) * strlen(control) */ MAXCONTROLSIZE, 0)) == -1) {
+    if ((send(sockfd, &C_ADD_USER_BIN, /* sizeof(char) * strlen(control) */ sizeof(int), 0)) == -1) {
         int e = errno;
         std::cout << "errno -> " << e;
         return APP_RESPONSE::SEND;
@@ -323,29 +334,28 @@ int app::addUser() {
 }
 
 int app::viewAppts() {
-    const char* control;
-    char num_appts[MAX_APPTS_SIZE_LENGTH] = {0, };
+    user_appointments.clear();
+    int num_appts;
     int appt_id;
     char appt_begin[APPT_BEGIN_END_LENGTH + 1] = {0, };
     char appt_end[APPT_BEGIN_END_LENGTH + 1] = {0, };
     char appt_place[APPT_PLACE_LENGTH + 1] = {0, };
     char appt_contents[APPT_CONTENTS_LENGTH + 1] = {0, };
     int size;
-    control = C_GET_USER_APPTS.c_str();
 
     // send control byte
-    if ((send(sockfd, control, MAXCONTROLSIZE, 0)) == -1) {
+    if ((send(sockfd, &C_GET_USER_APPTS_BIN, sizeof(int), 0)) == -1) {
         return APP_RESPONSE::SEND;
     }
 
     // get the number of appointments that will be sent by the server
-    int numbytes = recv( sockfd, num_appts, MAX_APPTS_SIZE_LENGTH, 0 );
+    int numbytes = recv( sockfd, &num_appts, sizeof(int), 0 );
 
     if ( numbytes == -1 ) { return APP_RESPONSE::RECV; }
-    else if ( numbytes == 0 ) { return APP_RESPONSE::DISCONN; }
+    else if ( numbytes == 0 ) { std::cout << "1" << std::endl; return APP_RESPONSE::DISCONN; }
 
     //convert the buffer to an integer
-    size = atoi(num_appts);
+    size = num_appts;
 
     // get the appointment details
     for ( int i = 0; i < size; ++i ) {
@@ -355,7 +365,10 @@ int app::viewAppts() {
         int numbytes = recv( sockfd, &appt_id, sizeof(int), 0 );
 
         if ( numbytes == -1 ) { return APP_RESPONSE::RECV; }
-        else if ( numbytes == 0 ) { return APP_RESPONSE::DISCONN; }
+        else if ( numbytes == 0 ) {
+            std::cout << i << "-" << "2" << std::endl;
+            return APP_RESPONSE::DISCONN;
+        }
         //------------------------------------------------------------------------
 
 
@@ -363,16 +376,25 @@ int app::viewAppts() {
 
         //------------------------------------------------------------------------
         // get the appt begin
-        char data_length_buf[32] = {0, };
-        numbytes = recv( sockfd, data_length_buf, MAXCONTROLSIZE_DATA, 0 );
+        int data_length;
+        numbytes = recv( sockfd, &data_length, sizeof(uint32_t), 0 );
+        //data_length = ntohl(data_length);
 
         if ( numbytes == -1 ) { return APP_RESPONSE::RECV; }
-        else if ( numbytes == 0 ) { return APP_RESPONSE::DISCONN; }
+        else if ( numbytes == 0 ) {
+            std::cout << i << "-" << "3" << std::endl;
+            return APP_RESPONSE::DISCONN;
+        }
+        assert(numbytes==sizeof(int));
 
-        numbytes = recv( sockfd, appt_begin, atoi(data_length_buf), 0 );
+        numbytes = recv( sockfd, appt_begin, data_length, 0 );
 
         if ( numbytes == -1 ) { return APP_RESPONSE::RECV; }
-        else if ( numbytes == 0 ) { return APP_RESPONSE::DISCONN; }
+        else if ( numbytes == 0 ) {
+            std::cout << i << "-" << "4" << std::endl;
+            return APP_RESPONSE::DISCONN;
+        }
+        assert(numbytes==data_length);
         //------------------------------------------------------------------------
 
 
@@ -380,16 +402,24 @@ int app::viewAppts() {
 
         //------------------------------------------------------------------------
         // get the appt end
-        bzero(data_length_buf, 0);
-        numbytes = recv( sockfd, data_length_buf, MAXCONTROLSIZE_DATA, 0 );
+        numbytes = recv( sockfd, &data_length, sizeof(uint32_t), 0 );
+        //data_length = ntohl(data_length);
 
         if ( numbytes == -1 ) { return APP_RESPONSE::RECV; }
-        else if ( numbytes == 0 ) { return APP_RESPONSE::DISCONN; }
+        else if ( numbytes == 0 ) {
+            std::cout << i << "-" << "5" << std::endl;
+            return APP_RESPONSE::DISCONN;
+        }
+        assert(numbytes==sizeof(int));
 
-        numbytes = recv( sockfd, appt_end, atoi(data_length_buf), 0 );
+        numbytes = recv( sockfd, appt_end, data_length, 0 );
 
         if ( numbytes == -1 ) { return APP_RESPONSE::RECV; }
-        else if ( numbytes == 0 ) { return APP_RESPONSE::DISCONN; }
+        else if ( numbytes == 0 ) {
+            std::cout << i << "-" << "6" << std::endl;
+            return APP_RESPONSE::DISCONN;
+        }
+        assert(numbytes==data_length);
         //------------------------------------------------------------------------
 
 
@@ -397,16 +427,24 @@ int app::viewAppts() {
 
         //------------------------------------------------------------------------
         // get the appt place
-        bzero(data_length_buf, 0);
-        numbytes = recv( sockfd, data_length_buf, MAXCONTROLSIZE_DATA, 0 );
+        numbytes = recv( sockfd, &data_length, sizeof(uint32_t), 0 );
+        //data_length = ntohl(data_length);
 
         if ( numbytes == -1 ) { return APP_RESPONSE::RECV; }
-        else if ( numbytes == 0 ) { return APP_RESPONSE::DISCONN; }
+        else if ( numbytes == 0 ) {
+            std::cout << i << "-" << "7" << std::endl;
+            return APP_RESPONSE::DISCONN;
+        }
+        assert(numbytes==sizeof(int));
 
-        numbytes = recv( sockfd, appt_place, atoi(data_length_buf), 0 );
+        numbytes = recv( sockfd, appt_place, data_length, 0 );
 
         if ( numbytes == -1 ) { return APP_RESPONSE::RECV; }
-        else if ( numbytes == 0 ) { return APP_RESPONSE::DISCONN; }
+        else if ( numbytes == 0 ) {
+            std::cout << i << "-" << "8" << std::endl;
+            return APP_RESPONSE::DISCONN;
+        }
+        assert(numbytes==data_length);
         //------------------------------------------------------------------------
 
 
@@ -414,16 +452,24 @@ int app::viewAppts() {
 
         //------------------------------------------------------------------------
         // get the appt contents
-        bzero(data_length_buf, 0);
-        numbytes = recv( sockfd, data_length_buf, MAXCONTROLSIZE_DATA, 0 );
+        numbytes = recv( sockfd, &data_length, sizeof(uint32_t), 0 );
+        //data_length = ntohl(data_length);
 
         if ( numbytes == -1 ) { return APP_RESPONSE::RECV; }
-        else if ( numbytes == 0 ) { return APP_RESPONSE::DISCONN; }
+        else if ( numbytes == 0 ) {
+            std::cout << i << "-" << "9" << std::endl;
+            return APP_RESPONSE::DISCONN;
+        }
+        assert(numbytes==sizeof(int));
 
-        numbytes = recv( sockfd, appt_contents, atoi(data_length_buf), 0 );
+        numbytes = recv( sockfd, appt_contents, data_length, 0 );
 
         if ( numbytes == -1 ) { return APP_RESPONSE::RECV; }
-        else if ( numbytes == 0 ) { return APP_RESPONSE::DISCONN; }
+        else if ( numbytes == 0 ) {
+            std::cout << i << "-" << "10" << std::endl;
+            return APP_RESPONSE::DISCONN;
+        }
+        assert(numbytes==data_length);
         //------------------------------------------------------------------------
 
         Appt appt;
@@ -440,11 +486,9 @@ int app::viewAppts() {
 }
 
 int app::addAppt() {
-    const char* control;
-    control = C_ADD_APPT.c_str();
 
     // send control byte
-    if ((send(sockfd, control, MAXCONTROLSIZE, 0)) == -1) {
+    if ((send(sockfd, &C_ADD_APPT_BIN, sizeof(int), 0)) == -1) {
         int e = errno;
         std::cout << "errno -> " << e;
         return APP_RESPONSE::SEND;
@@ -546,11 +590,8 @@ int app::addAppt() {
 }
 
 int app::delAppt() {
-    const char* control;
-    control = C_DEL_APPT.c_str();
-
     // send control byte
-    if ((send(sockfd, control, MAXCONTROLSIZE, 0)) == -1) {
+    if ((send(sockfd, &C_DEL_APPT_BIN, sizeof(int), 0)) == -1) {
         return APP_RESPONSE::SEND;
     }
 
@@ -559,9 +600,143 @@ int app::delAppt() {
     std::cin >> id;
 
     // send control byte
-    if ((send(sockfd, &id, sizeof(int), 0)) == -1) {
+    if ((send(sockfd, &id, sizeof(int), 0)) == -1) { return APP_RESPONSE::SEND; }
+
+    return -1;
+}
+
+int app::updateAppt() {
+    user_appointments.clear();
+    viewAppts();
+
+    rlutil::saveDefaultColor();
+    rlutil::setColor(rlutil::CYAN);
+    for (Appt a : user_appointments) {
+        a.operator<<(std::cout);
+    }
+    rlutil::resetColor();
+
+    // send control byte
+    if ((send(sockfd, &C_UPDATE_APPT_BIN, sizeof(int), 0)) == -1) {
         return APP_RESPONSE::SEND;
     }
+
+    int id;
+    std::cout << "Appointment ID: ";
+    std::cin >> id;
+
+    std::cout << std::endl << "Appointment to update" << std::endl;
+
+    rlutil::saveDefaultColor();
+    rlutil::setColor(rlutil::GREEN);
+    for (Appt a : user_appointments) {
+        if ( a.ID == id ) {
+            a.operator<<(std::cout);
+            break;
+        }
+    }
+
+    rlutil::resetColor();
+
+    int hh, mm, MM, DD, YYYY;
+    std::cout << std::endl << "Begin Time (hh:mm MM/DD/YYYY 24-hour model)" << std::endl;
+    std::cout << "hh: ";
+    std::cin >> hh;
+    std::cout << "mm: ";
+    std::cin >> mm;
+    std::cout << "MM: ";
+    std::cin >> MM;
+    std::cout << "DD: ";
+    std::cin >> DD;
+    std::cout << "YYYY: ";
+    std::cin >> YYYY;
+
+    std::string _hh, _mm, _MM, _DD, _YYYY;
+    _hh = std::to_string(hh);
+    _mm = std::to_string(mm);
+    _MM = std::to_string(MM);
+    _DD = std::to_string(DD);
+    _YYYY = std::to_string(YYYY);
+
+    std::string beginstr = _hh + ":" + _mm + " " + _MM + "/" + _DD + "/" + _YYYY;
+
+    std::cout << std::endl << "End Time (hh:mm MM/DD/YYYY 24-hour model)" << std::endl;
+    std::cout << "hh: ";
+    std::cin >> hh;
+    std::cout << "mm: ";
+    std::cin >> mm;
+    std::cout << "MM: ";
+    std::cin >> MM;
+    std::cout << "DD: ";
+    std::cin >> DD;
+    std::cout << "YYYY: ";
+    std::cin >> YYYY;
+    std::cin.ignore();
+
+    _hh = std::to_string(hh);
+    _mm = std::to_string(mm);
+    _MM = std::to_string(MM);
+    _DD = std::to_string(DD);
+    _YYYY = std::to_string(YYYY);
+
+    std::string endstr = _hh + ":" + _mm + " " + _MM + "/" + _DD + "/" + _YYYY;
+
+    std::cout << std::endl << "Place ( " << APPT_PLACE_LENGTH << " characters or fewer ): ";
+    //std::cin.ignore();
+    std::string place;
+    getline(std::cin, place);
+
+    std::cout << std::endl << "Description ( " << APPT_CONTENTS_LENGTH << " characters or fewer ): ";
+    std::string contents;
+    getline(std::cin, contents);
+
+    // ----------------------------------------------------------------------------------------------------------------------
+    // send the appt id
+    if ( ( send( sockfd, &id, sizeof(int), 0 ) ) == -1 ) {
+        return APP_RESPONSE::SEND;
+    }
+
+    // ----------------------------------------------------------------------------------------------------------------------
+    // send the size
+    if ( ( send( sockfd, std::to_string(beginstr.length() + 1).c_str(), MAXCONTROLSIZE_DATA, 0 ) ) == -1 ) {
+        return APP_RESPONSE::SEND;
+    }
+    // send the begin time
+    if ( ( send( sockfd, beginstr.c_str(), beginstr.length() + 1, 0 ) ) == -1 ) {
+        return APP_RESPONSE::SEND;
+    }
+
+    // ----------------------------------------------------------------------------------------------------------------------
+    // send the size
+    if ( ( send( sockfd, std::to_string(endstr.length() + 1).c_str(), MAXCONTROLSIZE_DATA, 0 ) ) == -1 ) {
+        return APP_RESPONSE::SEND;
+    }
+    // send the end time
+    if ( ( send( sockfd, endstr.c_str(), endstr.length() + 1, 0 ) ) == -1 ) {
+        return APP_RESPONSE::SEND;
+    }
+
+    // ----------------------------------------------------------------------------------------------------------------------
+    // send the size
+    if ( ( send( sockfd, std::to_string(place.length() + 1).c_str(), MAXCONTROLSIZE_DATA, 0 ) ) == -1 ) {
+        return APP_RESPONSE::SEND;
+    }
+    // send the place
+    if ((send(sockfd, place.c_str(), place.length() + 1, 0)) == -1) {
+        return APP_RESPONSE::SEND;
+    }
+
+    // ----------------------------------------------------------------------------------------------------------------------
+    // send the size
+    if ( ( send( sockfd, std::to_string(contents.length() + 1).c_str(), MAXCONTROLSIZE_DATA, 0 ) ) == -1 ) {
+        return APP_RESPONSE::SEND;
+    }
+    // send the contents
+    if ((send(sockfd, contents.c_str(), contents.length() + 1, 0)) == -1) {
+        return APP_RESPONSE::SEND;
+    }
+
+    return -1;
 }
 
 void app::encrypt(char s[], uint len ) {

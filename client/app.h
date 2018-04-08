@@ -18,8 +18,9 @@
 #include <vector>
 #include "Appt.h"
 #include "APP_PROTOCOL.h"
+#include "rlutil.h"
 
-#define PORT 32768 // the port client will be connecting to
+#define PORT 32767 // the port client will be connecting to
 #define MAXDATASIZE 100 // max number of bytes we can get at once
 #define MAXCONTROLSIZE 1
 
@@ -44,6 +45,7 @@ private:
     int viewAppts();
     int addAppt();
     int delAppt();
+    int updateAppt();
 
     struct appt {
         int appt_id;

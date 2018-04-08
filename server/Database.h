@@ -7,6 +7,7 @@
 #include <vector>
 #include <sys/stat.h>
 #include "Appt.h"
+//#include "rlutil.h"
 
 class Database {
 public:
@@ -15,6 +16,7 @@ public:
     int getAppts(std::vector<Appt> &a);
     int addAppt( const std::string& begin, const std::string& end, const std::string& place, const std::string& contents );
     int delAppt(const int& id);
+    int updateAppt(const int& id,const std::string& begin, const std::string& end, const std::string& place, const std::string& contents);
 
 private:
     const std::string f_user = "user";  // stores user information

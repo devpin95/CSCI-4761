@@ -11,7 +11,7 @@ int main(int argc, char *argv[])
     std::string clientmsg;
     int resp = clientapp.start(clientmsg, argc, argv);
     switch (resp) {
-        case 0: std::cout << clientmsg << " " << "Disconnected";
+        case 0: std::cout << "Disconnected";
             break;
         case 1: std::cout << clientmsg << " " ; perror("gethostbyname");;
             break;

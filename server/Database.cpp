@@ -1,8 +1,5 @@
 #include "Database.h"
 
-//line.replace(line.find(deleteline),deleteline.length(),"");
-//temp << line << endl;
-
 int Database::addUser( const std::string& uname, const std::string& pass ) {
     int stat;
     std::string dir = DB_DIRNAME + uname;
@@ -57,7 +54,10 @@ int Database::getAppts(std::vector<Appt> &a) {
     int size = 0;
     std::string ID, begin, end, place, contents;
 
+    //rlutil::saveDefaultColor();
+    //rlutil::setColor(rlutil::YELLOW);
     user_dir.open( user_dir_path  + "\\" + f_appointments, std::ios::in );
+    //rlutil::resetColor();
 
     if ( user_dir ) {
         while ( getline( user_dir, ID) ) {
@@ -95,6 +95,11 @@ int Database::addAppt( const std::string& begin, const std::string& end, const s
     int max_id = 0;
     std::string ID, b, e, p, c;
     std::vector<Appt> temp_appts;
+
+    //rlutil::saveDefaultColor();
+    //rlutil::setColor(rlutil::YELLOW);
+    std::cout << user_dir_path << "\\" << f_appointments;
+    //rlutil::resetColor();
 
     user_dir.open( user_dir_path  + "\\" + f_appointments, std::ios::in );
 
@@ -188,6 +193,70 @@ int Database::delAppt(const int& id) {
                 temp_appts.erase(temp_appts.begin()+i);
                 break;
             }
+        }
+
+        user_dir.open( user_dir_path  + "\\" + f_appointments, std::ios::out | std::ios::trunc );
+        if ( user_dir ) {
+            for ( Appt& a : temp_appts ) {
+                user_dir << a;
+            }
+        } else {
+            return -1;
+        }
+
+        user_dir.close();
+    }
+    else {
+        return -1;
+    }
+
+    return 0;
+}
+
+int Database::updateAppt(const int& id,const std::string& begin, const std::string& end, const std::string& place, const std::string& contents) {
+    if ( !logged_in ) {
+        return -1;
+    }
+
+    std::string ID, b, e, p, c;
+    std::vector<Appt> temp_appts;
+
+    user_dir.open( user_dir_path  + "\\" + f_appointments, std::ios::in );
+
+    if ( user_dir ) {
+        while ( getline( user_dir, ID) ) {
+            if ( !ID.empty() ) {
+                getline( user_dir, b);
+                getline( user_dir, e);
+                getline( user_dir, p);
+                getline( user_dir, c);
+
+                Appt appt;
+                appt.ID = stoi(ID);
+                appt.begin = b;
+                appt.end = e;
+                appt.place = p;
+                appt.contents = c;
+
+                temp_appts.push_back(appt);
+            }
+        }
+        user_dir.close();
+
+        bool appt_updated = false;
+        for ( int i = 0; i < temp_appts.size(); ++i ) {
+            if ( temp_appts[i].ID == id ) {
+                temp_appts[i].begin = begin;
+                temp_appts[i].end = end;
+                temp_appts[i].place = place;
+                temp_appts[i].contents = contents;
+                appt_updated = true;
+                break;
+            }
+        }
+
+        if ( !appt_updated ) {
+            return 1;
         }
 
         user_dir.open( user_dir_path  + "\\" + f_appointments, std::ios::out | std::ios::trunc );

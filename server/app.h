@@ -20,7 +20,7 @@
 #include "Appt.h"
 #include "APP_PROTOCOL.h"
 
-#define MYPORT 32768    // the port users will be connecting to
+#define MYPORT 32767    // the port users will be connecting to
 #define BACKLOG 10     // how many pending connections queue will hold
 
 class app {
@@ -51,6 +51,7 @@ private:
     int getAppts();
     int addAppt();
     int delAppt();
+    int updateAppt();
     //int checkIfUserExists(const std::string& uname);
 };
 

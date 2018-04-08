@@ -1,4 +1,5 @@
 #include <iostream>
+#include <assert.h>
 #include "app.h"
 
 int main(void) {
